@@ -12,6 +12,8 @@ export class LevelDefinition {
   public readonly levelNumber: number;
   public readonly difficulty: Difficulty;
   public readonly board: Cell[][];
+  public readonly maxMoves: number;
+  public readonly maxTimeInSeconds: number;
 
   /**
    * Construye una definición de nivel inmutable.
@@ -19,12 +21,16 @@ export class LevelDefinition {
    * @param levelNumber número del nivel.
    * @param difficulty dificultad del nivel.
    * @param board matriz del tablero con componentes del dominio.
+   * @param maxMoves número máximo de movimientos permitidos.
+   * @param maxTimeInSeconds tiempo máximo en segundos permitido.
    */
-  constructor(id: string, levelNumber: number, difficulty: Difficulty, board: Cell[][]) {
+  constructor(id: string, levelNumber: number, difficulty: Difficulty, board: Cell[][], maxMoves: number, maxTimeInSeconds: number) {
     this.id = id;
     this.levelNumber = levelNumber;
     this.difficulty = difficulty;
     this.board = board;
+    this.maxMoves = maxMoves;
+    this.maxTimeInSeconds = maxTimeInSeconds;
   }
 
   /**
@@ -48,20 +54,4 @@ export interface IScoreStrategy {
    * @returns puntuación numérica.
    */
   calculateScore(movements: number, timeSpent: number): number;
-}
-
-// Puerto de persistencia para los niveles.
-export interface ILevelRepository {
-  /**
-   * Busca una definición de nivel por su número.
-   * @param levelNumber número de nivel.
-   * @returns definición del nivel o null si no existe.
-   */
-  findByLevelNumber(levelNumber: number): Promise<LevelDefinition | null>;
-
-  /**
-   * Guarda o actualiza una definición de nivel.
-   * @param levelDefinition definición del nivel a persistir.
-   */
-  save(levelDefinition: LevelDefinition): Promise<void>;
 }
