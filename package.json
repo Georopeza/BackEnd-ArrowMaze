@@ -3,12 +3,17 @@
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@types/jest": "^30.0.0",
+    "@types/uuid": "^10.0.0",
     "husky": "^9.1.7",
     "jest": "^30.4.2",
-    "ts-jest": "^29.4.11"
+    "ts-jest": "^29.4.11",
+    "typescript": "^6.0.3"
   },
-  "scripts" : {
+  "scripts": {
     "test": "jest",
     "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "uuid": "^14.0.0"
   }
 }
