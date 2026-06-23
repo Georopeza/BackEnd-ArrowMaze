@@ -1,4 +1,4 @@
-coverage/
-node-modules/
-dist/
+node_modules
+dist
 .env
+coverage
