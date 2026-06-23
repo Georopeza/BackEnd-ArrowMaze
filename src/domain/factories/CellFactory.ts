@@ -5,29 +5,33 @@ import { EmptyCell } from '../entities/EmptyCell';
 import { ExitCell } from '../entities/ExitCell';
 import { Direction } from '../value-objects/Direction';
 
-// Factory puramente creacional para la creación de celdas del tablero.
+// Factory registrable para crear celdas; permite extender sin modificar la clase.
+
+// Definimos los tipos fijos del juego base, pero dejamos la puerta abierta a strings libres
+export type DefaultCellType = 'ArrowCell' | 'WallCell' | 'EmptyCell' | 'ExitCell';
+export type CellType = DefaultCellType | (string & {});
+
 export class CellFactory {
-  /**
-   * Crea una celda a partir de un tipo y datos opcionales.
-   * @param type tipo de celda a crear.
-   * @param data datos adicionales necesarios para ciertos tipos de celda.
-   * @returns instancia de Cell correspondiente.
-   */
-  public createCell(type: string, data?: any): Cell {
-    switch (type) {
-      case 'ArrowCell':
-        if (!data?.direction) {
-          throw new Error('ArrowCell requires a direction');
-        }
-        return new ArrowCell(data.direction as Direction);
-      case 'WallCell':
-        return new WallCell();
-      case 'EmptyCell':
-        return new EmptyCell();
-      case 'ExitCell':
-        return new ExitCell();
-      default:
-        throw new Error(`Unknown cell type: ${type}`);
-    }
+  private registry: Map<string, (data?: any) => Cell> = new Map();
+
+  constructor() {
+    // registraciones por defecto
+    this.register('ArrowCell', (data?: any) => {
+      if (!data?.direction) throw new Error('ArrowCell requires a direction');
+      return new ArrowCell(data.direction as Direction);
+    });
+    this.register('WallCell', () => new WallCell());
+    this.register('EmptyCell', () => new EmptyCell());
+    this.register('ExitCell', () => new ExitCell());
+  }
+
+  public register(type: string, factoryFn: (data?: any) => Cell): void {
+    this.registry.set(type, factoryFn);
+  }
+
+  public createCell(type: CellType, data?: any): Cell {
+    const factoryFn = this.registry.get(type);
+    if (!factoryFn) throw new Error(`Unknown cell type: ${type}`);
+    return factoryFn(data);
   }
 }
