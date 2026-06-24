@@ -21,4 +21,8 @@ export class ArrowCell extends Cell {
   public getDescription(): string {
     return `ArrowCell pointing ${this.direction}`;
   }
+
+  public getDirection(): Direction {
+    return this.direction;
+  }
 }

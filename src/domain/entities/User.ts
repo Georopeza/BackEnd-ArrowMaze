@@ -1,18 +1,12 @@
-// Entidad de dominio pura para representar un usuario del sistema.
-// Aplica el principio de entidad de DDD: identidad propia, reglas de negocio y atributos inmutables.
+import { IPasswordHasher } from '../services/IPasswordHasher';
+
 export class User {
   public readonly id: string;
   public readonly username: string;
-  public readonly passwordHash: string;
+  // Cambiamos a private para que el hash no se filtre fuera de la entidad
+  private readonly passwordHash: string; 
   public readonly createdAt: Date;
 
-  /**
-   * Construye un usuario con la invariante de username valida.
-   * @param id identificador único del usuario.
-   * @param username nombre de usuario.
-   * @param passwordHash hash de la contraseña.
-   * @param createdAt fecha de creación del usuario.
-   */
   constructor(id: string, username: string, passwordHash: string, createdAt: Date) {
     if (username.length < 3 || username.length > 20) {
       throw new Error('Username must be between 3 and 20 characters');
@@ -22,5 +16,10 @@ export class User {
     this.username = username;
     this.passwordHash = passwordHash;
     this.createdAt = createdAt;
+  }
+
+  // Método de dominio para validar identidad sin exponer el hash
+  public async verifyPassword(password: string, hasher: IPasswordHasher): Promise<boolean> {
+    return await hasher.compare(password, this.passwordHash);
   }
 }
