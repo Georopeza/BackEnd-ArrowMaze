@@ -88,6 +88,22 @@ describe('Board - Arrow Maze Mechanics', () => {
   // 3. COMPORTAMIENTOS COMPLEJOS Y ROBUSTEZ DEL TABLERO
   // =========================================================================
 
+  test('should_fail_to_place_arrow_outside_board_boundaries', () => {
+    // REGLA: El tablero debe ser un guardián. No debe permitir instanciar flechas
+    // que excedan sus dimensiones declaradas.
+    const board = new BoardTestBuilder().withDimensions(3, 3) // Tablero pequeño
+      .build();
+    const api = new BoardTestingAPI(board);
+    // Intentar añadir una flecha que se sale del tablero (columna 5 en un tablero de ancho 3)
+    // Esto debería lanzar una excepción o fallar la creación del nivel
+    expect(() => {
+      api.addArrowAt(0, 0, Direction.RIGHT, [new Position(0, 5)]);
+    }).toThrow(); 
+
+    // Verificamos que el tablero sigue vacío y no se corrompió
+    api.expectArrowCountToBe(0);
+  });
+
   test('should_completely_vacate_all_matrix_cells_of_a_complex_L_shaped_arrow', () => {
     // REGLA: Los cuerpos pueden tener cualquier forma. Al salir, deben limpiar todas sus celdas de la matriz.
     // Configuración: Cabeza en (2,2) apuntando a la RIGHT. Cuerpo en L ocupando (2,1) y (3,1).

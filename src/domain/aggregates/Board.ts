@@ -22,8 +22,19 @@ export class Board {
 
   // Mutators / query API mínimos para que servicios externos operen sobre el tablero.
   public addArrow(arrow: Arrow): void {
-    this.arrows.push(arrow);
+  // 1. Validar cada posición de la flecha
+  for (const pos of arrow.getAllPositions()) {
+    // Aquí compruebas si la posición está fuera de los límites
+    if (pos.row < 0 || pos.row >= this.dimensions.rows || 
+        pos.col < 0 || pos.col >= this.dimensions.cols) {
+      // ESTO es lo que hace que el test "pase" (porque ahora sí lanza el error esperado)
+      throw new Error("La flecha está fuera de los límites del tablero");
+    }
   }
+
+  // 2. Si pasa la validación, entonces sí agregas la flecha
+  this.arrows.push(arrow);
+}
 
   public getArrows(): Arrow[] {
     return this.arrows;
