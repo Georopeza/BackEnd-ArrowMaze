@@ -79,7 +79,7 @@ export class LevelSolvabilityValidator {
   /**
    * Verifica si la trayectoria de la cabeza de la flecha hacia el exterior está despejada.
    */
-  private canArrowExit(arrow: ArrowPiece, activeArrows: ArrowPiece[], width: number, height: number): boolean {
+  public canArrowExit(arrow: ArrowPiece, activeArrows: ArrowPiece[], width: number, height: number): boolean {
     const { rowStep, colStep } = this.getSteps(arrow.direction);
     
     // La trayectoria de escape inicia justo una casilla por delante de la cabeza
