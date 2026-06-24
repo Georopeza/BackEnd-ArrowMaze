@@ -1,9 +1,8 @@
-// src/domain/entities/Arrow.ts
+
 import { ArrowId } from '../value-objects/ArrowId';
 import { Position } from '../value-objects/Position';
 import { Direction } from '../value-objects/Direction';
 
-// src/domain/entities/Arrow.ts
 export class Arrow {
   constructor(
     private readonly id: ArrowId,

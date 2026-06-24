@@ -21,22 +21,16 @@ describe('LevelSolvabilityValidator - E2E Solvability Tests', () => {
       width: 4,
       height: 4,
       arrows: [
-        {
-          id: 'arrow-top',
-          direction: Direction.UP,
-          head: { row: 1, col: 1 },
-          body: [{ row: 2, col: 1 }] // Cuerpo vertical de 1 celda
-        },
-        {
-          id: 'arrow-bottom',
-          direction: Direction.DOWN,
-          head: { row: 2, col: 2 },
-          body: [{ row: 1, col: 2 }]
-        }
-      ]
+              { id: 'f1', direction: Direction.LEFT, head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] },
+              { id: 'f2', direction: Direction.RIGHT, head: { row: 1, col: 1 }, body: [{ row: 1, col: 0 }] },
+              { id: 'f3', direction: Direction.DOWN, head: { row: 1, col: 2 }, body: [{ row: 0, col: 2 }] },
+              { id: 'f4', direction: Direction.RIGHT, head: { row: 0, col: 3 }, body: [{ row: 0, col: 3 }] },
+              { id: 'f5', direction: Direction.UP, head: { row: 1, col: 3 }, body: [{ row: 2, col: 3 }, { row: 2, col: 2 }] },
+              { id: 'f6', direction: Direction.UP, head: { row: 2, col: 1 }, body: [{ row: 3, col: 1 }, { row: 4, col: 1 }, { row: 4, col: 0 }, { row: 3, col: 0}, { row: 2, col: 0 }] },
+              { id: 'f7', direction: Direction.DOWN, head: { row: 4, col: 2 }, body: [{ row: 3, col: 2 }, { row: 3, col: 3 }, { row: 3, col: 4 }, { row: 2, col: 4 }, { row: 1, col: 4 }] },
+              { id: 'f8', direction: Direction.LEFT, head: { row: 4, col: 4 }, body: [{ row: 4, col: 3 }] }
+            ]
     };
-
-    // Ambas apuntan hacia los bordes exteriores opuestos. Ninguna bloquea la trayectoria de la otra.
     expect(validator.isPlayable(simpleLevel)).toBe(true);
   });
 
