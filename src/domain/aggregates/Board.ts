@@ -1,71 +1,61 @@
-import { Cell } from '../entities/Cell';
-import { EmptyCell } from '../entities/EmptyCell';
 import { Arrow } from '../entities/Arrow';
-import { Position } from '../value-objects/Position';
 import { BoardDimensions } from '../value-objects/BoardDimensions';
-import { Direction } from '../value-objects/Direction';
+import { Position } from '../value-objects/Position';
 
 export class Board {
-  private grid: Cell[][];
-  private arrows: Arrow[];
+  private readonly arrows: Arrow[];
 
   constructor(private readonly dimensions: BoardDimensions) {
-    this.grid = this.createEmptyGrid();
     this.arrows = [];
   }
 
-  private createEmptyGrid(): Cell[][] {
-    return Array.from({ length: this.dimensions.rows }, () =>
-      Array.from({ length: this.dimensions.cols }, () => new EmptyCell())
-    );
-  }
-
-  // Mutators / query API mínimos para que servicios externos operen sobre el tablero.
+  // Registra una flecha solo si su espacio está dentro del tablero y no colisiona con otra.
   public addArrow(arrow: Arrow): void {
-  // 1. Validar cada posición de la flecha
-  for (const pos of arrow.getAllPositions()) {
-    // Aquí compruebas si la posición está fuera de los límites
-    if (pos.row < 0 || pos.row >= this.dimensions.rows || 
-        pos.col < 0 || pos.col >= this.dimensions.cols) {
-      // ESTO es lo que hace que el test "pase" (porque ahora sí lanza el error esperado)
-      throw new Error("La flecha está fuera de los límites del tablero");
+    for (const pos of arrow.getAllPositions()) {
+      if (!this.dimensions.isValidPosition(pos.row, pos.col)) {
+        throw new Error('La flecha está fuera de los límites del tablero');
+      }
     }
+
+    const hasOverlap = this.arrows.some(existing =>
+      existing.getAllPositions().some(existingPos =>
+        arrow.getAllPositions().some(newPos => newPos.equals(existingPos)),
+      ),
+    );
+
+    if (hasOverlap) {
+      throw new Error('La flecha se superpone con otra flecha existente');
+    }
+
+    this.arrows.push(arrow);
   }
 
-  // 2. Si pasa la validación, entonces sí agregas la flecha
-  this.arrows.push(arrow);
-}
-
+  // Devuelve una copia de la lista de flechas para evitar modificaciones externas.
   public getArrows(): Arrow[] {
-    return this.arrows;
+    return [...this.arrows];
   }
 
+  // Devuelve las dimensiones del tablero para validar movimientos y renderizar el estado.
   public getDimensions(): BoardDimensions {
     return this.dimensions;
   }
 
+  // Busca una flecha que ocupe la posición dada, si existe.
   public findArrowAt(pos: Position): Arrow | undefined {
-    return this.arrows.find(a => a.occupies(pos));
+    return this.arrows.find(arrow => arrow.occupies(pos));
   }
 
-  public clearPositions(positions: Position[]): void {
-    positions.forEach(pos => {
-      if (this.dimensions.isValidPosition(pos.row, pos.col)) {
-        this.grid[pos.row][pos.col] = new EmptyCell();
-      }
-    });
-  }
-
+  // Elimina una flecha del tablero por su identificador único.
   public removeArrowById(id: string): void {
-    const arrow = this.arrows.find(a => a.getId().value === id);
-    if (arrow) {
-      // limpiar grid para posiciones de la flecha encontrada
-      arrow.getAllPositions().forEach(pos => {
-        if (this.dimensions.isValidPosition(pos.row, pos.col)) {
-          this.grid[pos.row][pos.col] = new EmptyCell();
-        }
-      });
-    }
-    this.arrows = this.arrows.filter(a => a.getId().value !== id);
+    this.arrows.splice(
+      0,
+      this.arrows.length,
+      ...this.arrows.filter(arrow => arrow.getId().value !== id),
+    );
+  }
+
+  // Comprueba si el tablero está vacío, es decir, sin flechas registradas.
+  public isEmpty(): boolean {
+    return this.arrows.length === 0;
   }
 }

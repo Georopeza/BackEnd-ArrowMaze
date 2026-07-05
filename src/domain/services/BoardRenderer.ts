@@ -2,22 +2,26 @@ import { Board } from '../aggregates/Board';
 import { Position } from '../value-objects/Position';
 
 export class BoardRenderer {
-  public printBoard(board: Board): void {
+  // Convierte el estado actual del tablero en una representación textual para depuración o consola.
+  public render(board: Board): string {
     const dimensions = board.getDimensions();
     const arrows = board.getArrows();
 
-    const visual = Array.from({ length: dimensions.rows }, (_, rowIndex) =>
+    return Array.from({ length: dimensions.rows }, (_, rowIndex) =>
       Array.from({ length: dimensions.cols }, (_, colIndex) => {
         const pos = new Position(rowIndex, colIndex);
-        const arrow = arrows.find(a => a.occupies(pos));
+        const arrow = arrows.find(candidate => candidate.occupies(pos));
         if (!arrow) return ' . ';
-        if (arrow.headPosition.equals(pos)) return ' H ';
-        return ` ${arrow.id.value.substring(0, 1)} `;
-      }).join('|')
-    ).join('\n' + '-'.repeat(dimensions.cols * 4) + '\n');
+        if (arrow.getHead().equals(pos)) return ' H ';
+        return ` ${arrow.getId().value.substring(0, 1)} `;
+      }).join('|'),
+    ).join('\n');
+  }
 
+  // Imprime la representación visual del tablero en la consola.
+  public printBoard(board: Board): void {
     console.log('\n--- Current Board State ---');
-    console.log(visual);
+    console.log(this.render(board));
     console.log('---------------------------\n');
   }
 }
