@@ -1,5 +1,6 @@
 import { CellFactory } from './CellFactory';
 import { ArrowCell } from '../entities/ArrowCell';
+import { ArrowBodyCell } from '../entities/ArrowBodyCell';
 import { WallCell } from '../entities/WallCell';
 import { Direction } from '../value-objects/Direction';
 import { Cell } from '../entities/Cell';
@@ -27,11 +28,19 @@ describe('CellFactory - Domain Service', () => {
   });
 
   test('should_create_an_ArrowCell_with_the_provided_domain_direction', () => {
-    const cell = factory.createCell('ArrowCell', { direction: Direction.UP }) as ArrowCell;
-    
+    const cell = factory.createCell('ArrowCell', { direction: Direction.UP, arrowId: 'arrow-1' }) as ArrowCell;
+
     expect(cell instanceof ArrowCell).toBe(true);
     // Verificamos que el Value Object de la dirección se haya asignado correctamente
-    expect(cell.getDirection()).toBe(Direction.UP); 
+    expect(cell.getDirection()).toBe(Direction.UP);
+    expect(cell.arrowId).toBe('arrow-1');
+  });
+
+  test('should_create_an_ArrowBodyCell_referencing_its_head_arrowId', () => {
+    const cell = factory.createCell('ArrowBodyCell', { arrowId: 'arrow-1' }) as ArrowBodyCell;
+
+    expect(cell instanceof ArrowBodyCell).toBe(true);
+    expect(cell.arrowId).toBe('arrow-1');
   });
 
   // =========================================================================
@@ -42,6 +51,18 @@ describe('CellFactory - Domain Service', () => {
     expect(() => {
       factory.createCell('ArrowCell'); // Intento de creación inválido sin dirección
     }).toThrow('ArrowCell requires a direction');
+  });
+
+  test('should_throw_an_error_if_ArrowCell_is_missing_its_arrowId', () => {
+    expect(() => {
+      factory.createCell('ArrowCell', { direction: Direction.UP }); // Falta el arrowId
+    }).toThrow('ArrowCell requires an arrowId');
+  });
+
+  test('should_throw_an_error_if_ArrowBodyCell_is_missing_its_arrowId', () => {
+    expect(() => {
+      factory.createCell('ArrowBodyCell');
+    }).toThrow('ArrowBodyCell requires an arrowId');
   });
 
   test('should_throw_an_error_when_domain_requests_an_unregistered_cell_type', () => {

@@ -156,6 +156,44 @@
     - El código es ahora 100% testeable en aislamiento, sin necesidad de mocks de infraestructura.
     - Recomendación: mantener Board.ts como referencia y documentar por qué se reemplazó BoardGroup (para futuros contribuyentes).
 
+## Tarea 4: Auditoría y corrección de la Capa de Dominio (bugs, paredes, mapper de niveles y cobertura de tests)
+
+  ## Tarea o problema abordado:
+    - Auditar a fondo toda la Capa 1 de Dominio (entidades, value objects, agregado Board, servicios, factory, builder) en busca de bugs, piezas faltantes y huecos de cobertura de tests, antes de avanzar a las capas superiores.
+    - Corregir bugs de comportamiento identificados: inferencia incorrecta de "nivel completado" en PlayerProgress, ausencia de validación de solapamiento/ID duplicado en Board.addArrow, y un campo grid en Board que nunca se sincronizaba.
+    - Implementar piezas faltantes: que las paredes (WallCell) realmente bloqueen la línea de visión, y construir el puente (mapper) entre el modelo de autoría de niveles (LevelDefinition.board: Cell[][]) y el modelo de juego en vivo (Board/Arrow), incluyendo soporte para flechas de más de una celda en el formato de autoría.
+    - Eliminar duplicación de lógica (vector de dirección repetido en dos servicios) y código muerto (Composite BoardComponent/BoardGroup, ya reemplazado por Board).
+    - Cerrar huecos de cobertura de tests: invariantes de LevelDefinition, validaciones de LevelBuilder, Arrow/ArrowId, y una subclase concreta real para el Template Method (BaseLevelProcessor), que hasta ahora no tenía ninguna implementación que lo ejercitara.
+
+  ## Herramienta de IA utilizada:
+    - Claude Code (modelo: Claude Sonnet 5), en modo conversación guiada (el equipo revisó cada hallazgo y decidió el alcance antes de tocar código).
+
+  ## Prompt o instrucción proporcionada:
+    - Se pidió primero una auditoría abierta: "revisa bien la capa de dominio, dime qué puede mejorarse o qué falta". A partir del listado de hallazgos, el equipo respondió preguntas puntuales de diseño (cómo determinar isCompleted en PlayerProgress, qué hacer con el Composite deprecado, y qué alcance darle al mapper de niveles) antes de aprobar un plan de 5 fases (limpieza, bugs, paredes, mapper, cobertura de tests) para implementar de una sola vez, con la condición explícita de no hacer commit ni push (el equipo lo haría manualmente) y de comentar en español cada función nueva siguiendo el estilo ya presente en el código.
+
+  ## Resultado obtenido:
+    - `Board.ts`: `addArrow` ahora rechaza `ArrowId` duplicados y solapamiento de posiciones; se agregaron `addWall`, `getCellAt` e `isSolved`, dándole uso real al `grid` que antes quedaba siempre vacío.
+    - `PlayerProgress.ts`: `updateScore` recibe ahora un parámetro explícito `completed: boolean` en vez de inferir el estado de negocio a partir de una comparación de puntaje.
+    - `LevelActionService.ts` y `LevelSolvabilityValidator.ts`: ambas implementaciones de la línea de visión ahora bloquean también por paredes, y comparten el cálculo del vector de dirección desde el nuevo `DirectionVector.ts` (antes duplicado).
+    - `BoardRenderer.ts`: pasó de imprimir por consola (`printBoard(): void`) a devolver un string puro (`render(): string`), sin I/O dentro del dominio.
+    - Nuevos `ArrowBodyCell.ts` y `arrowId` en `ArrowCell.ts`, más una nueva invariante en `LevelDefinition` y un `addArrow(...)` ergonómico en `LevelBuilder`, permitiendo declarar flechas de varias celdas en el modelo de autoría.
+    - Nuevo `LevelToBoardMapper.ts`: primer puente real entre `LevelDefinition.board` y un `Board` jugable.
+    - Eliminados `BoardComponent.ts` y `BoardGroup.ts` (Composite deprecado, sin uso ni tests).
+    - Nueva subclase concreta `FireArrowLevelProcessor.ts` para `BaseLevelProcessor`, más tests que prueban el Template Method funcionando de punta a punta.
+    - Se agregaron ~29 tests nuevos (paredes, `LevelDefinition`, `LevelBuilder`, `Arrow`, `ArrowId`, `LevelToBoardMapper`, `FireArrowLevelProcessor`), llevando la suite de 31 a 65 tests, todos en verde.
+
+  ## Modificaciones realizadas por el equipo al resultado de la IA:
+    - El equipo definió explícitamente que "completado" debe significar "ya no quedan flechas en el tablero" (`Board.isSolved()`), en vez de aceptar una solución más simple basada solo en un booleano genérico.
+    - El equipo decidió eliminar por completo el Composite deprecado en vez de solo documentarlo mejor, para no dejar ambigüedad sobre cuál es el modelo de tablero vigente.
+    - El equipo eligió la opción más completa para el mapper de niveles (extender el formato de autoría con `arrowId`/`ArrowBodyCell` para soportar flechas multi-celda) en vez de la alternativa más simple de solo soportar flechas de una celda.
+    - Se pidió explícitamente que todo el código nuevo llevara comentarios breves en español, siguiendo el estilo ya usado en el resto del dominio, y que no se ejecutara ningún `git commit`/`git push` automático.
+
+  ## Lecciones aprendidas o limitaciones identificadas:
+    - Varios de estos bugs (el campo `grid` sin sincronizar, la inferencia de `isCompleted` desde el puntaje) no eran evidentes leyendo un solo archivo: aparecieron al trazar cómo cada entidad se usa realmente desde los servicios y los tests existentes.
+    - Extender el modelo de autoría de niveles para soportar cuerpos multi-celda fue el cambio de mayor alcance: tocó 5 archivos (`ArrowCell`, `ArrowBodyCell`, `CellFactory`, `LevelBuilder`, `LevelDefinition`) para mantener la invariante de que todo cuerpo referencie una cabeza válida.
+    - Se detectó al ejecutar los tests (no en la revisión inicial) que `BoardRenderer.ts` accedía a propiedades privadas de `Arrow` (`headPosition`, `id`) que ya no eran públicas; se corrigió usando los getters existentes (`getHead()`, `getId()`) al mismo tiempo que se quitaba el `console.log`.
+    - Aún queda pendiente extender `LevelSolvabilityValidator`'s DTO externo (`StructuredLevelJsonDto`) para que un nivel real en JSON declare sus `walls`, y conectar `LevelToBoardMapper` con un futuro caso de uso una vez exista la Capa 2 (Use Cases).
+
 ## Evaluación crítica
 
    ## Porcentaje aproximado del código que contó con asistencia de IA:

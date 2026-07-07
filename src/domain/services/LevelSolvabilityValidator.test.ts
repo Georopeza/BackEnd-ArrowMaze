@@ -134,4 +134,43 @@ describe('LevelSolvabilityValidator - E2E Solvability Tests', () => {
     // Ninguna de las dos piezas puede moverse inicialmente. El árbol de backtracking se quedará sin opciones.
     expect(validator.isPlayable(LBlockedLevel)).toBe(false);
   });
+
+  // ==========================================
+  // CASO 5: PAREDES BLOQUEANDO LA SALIDA
+  // ==========================================
+  test('should_reject_level_when_a_wall_blocks_the_only_arrow_path', () => {
+    const wallBlockedLevel: StructuredLevelJsonDto = {
+      id: 'wall-blocked',
+      levelNumber: 5,
+      difficulty: 'EASY',
+      maxMoves: 5,
+      maxTimeInSeconds: 30,
+      width: 3,
+      height: 3,
+      arrows: [
+        { id: 'f1', direction: Direction.UP, head: { row: 1, col: 1 }, body: [] },
+      ],
+      walls: [{ row: 0, col: 1 }], // Justo en la trayectoria de salida hacia arriba
+    };
+
+    expect(validator.isPlayable(wallBlockedLevel)).toBe(false);
+  });
+
+  test('should_approve_level_when_walls_exist_but_do_not_obstruct_any_arrow_path', () => {
+    const wallClearLevel: StructuredLevelJsonDto = {
+      id: 'wall-clear',
+      levelNumber: 6,
+      difficulty: 'EASY',
+      maxMoves: 5,
+      maxTimeInSeconds: 30,
+      width: 3,
+      height: 3,
+      arrows: [
+        { id: 'f1', direction: Direction.UP, head: { row: 1, col: 1 }, body: [] },
+      ],
+      walls: [{ row: 2, col: 2 }], // Fuera de la trayectoria de la flecha
+    };
+
+    expect(validator.isPlayable(wallClearLevel)).toBe(true);
+  });
 });

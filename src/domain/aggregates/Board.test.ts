@@ -122,6 +122,42 @@ describe('Board - Arrow Maze Mechanics', () => {
     api.expectEmptyBoard();
   });
 
+  // =========================================================================
+  // 4. PAREDES: OBSTÁCULOS ESTÁTICOS QUE TAMBIÉN BLOQUEAN LA SALIDA
+  // =========================================================================
+
+  test('should_not_allow_arrow_to_exit_when_a_wall_blocks_its_path', () => {
+    // REGLA: Una pared bloquea la línea de visión igual que otra flecha.
+    const board = new BoardTestBuilder()
+      .withDimensions(5, 5)
+      .withArrowAt(2, 2, Direction.UP)
+      .withWallAt(1, 2) // Pared justo en el camino de salida hacia arriba
+      .build();
+
+    const api = new BoardTestingAPI(board);
+
+    api.interactAt(2, 2);
+
+    api.expectActionToFail();
+    api.expectArrowCountToBe(1);
+  });
+
+  test('should_allow_arrow_to_exit_when_the_wall_is_not_in_its_path', () => {
+    // REGLA: Una pared fuera de la trayectoria no debe afectar la salida.
+    const board = new BoardTestBuilder()
+      .withDimensions(5, 5)
+      .withArrowAt(2, 2, Direction.UP)
+      .withWallAt(1, 3) // Pared en otra columna, fuera del camino
+      .build();
+
+    const api = new BoardTestingAPI(board);
+
+    api.interactAt(2, 2);
+
+    api.expectActionToSucceed();
+    api.expectEmptyBoard();
+  });
+
   test('should_do_nothing_and_fail_action_when_clicking_an_empty_cell', () => {
     // REGLA: Hacer click en la nada no debe alterar el estado del juego ni mover flechas reales
     const board = new BoardTestBuilder()

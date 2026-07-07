@@ -34,6 +34,12 @@ export class BoardTestBuilder {
     return this;
   }
 
+  // Coloca una pared en la posición indicada, para escenarios de test que necesiten bloqueo estático.
+  public withWallAt(row: number, col: number): this {
+    this.board.addWall(new Position(row, col));
+    return this;
+  }
+
   public build(): Board {
     return this.board;
   }
