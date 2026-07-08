@@ -1,8 +1,8 @@
 import { LevelJsonMapper } from '../../../src/infrastructure/mappers/LevelJsonMapper';
 import { Difficulty } from '../../../src/domain/entities/LevelDefinition';
 import { ArrowCell } from '../../../src/domain/entities/ArrowCell';
+import { ArrowBodyCell } from '../../../src/domain/entities/ArrowBodyCell';
 import { ExitCell } from '../../../src/domain/entities/ExitCell';
-import { BoardGroup } from '../../../src/domain/entities/BoardGroup';
 import { Direction } from '../../../src/domain/value-objects/Direction';
 import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
 
@@ -25,7 +25,7 @@ const simpleLevel: StructuredLevelJsonDto = {
     { id: 'f1', direction: 'LEFT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] },
     { id: 'f2', direction: 'RIGHT', head: { row: 1, col: 1 }, body: [{ row: 1, col: 0 }] },
     { id: 'f3', direction: 'DOWN', head: { row: 1, col: 2 }, body: [{ row: 0, col: 2 }] },
-    { id: 'f4', direction: 'RIGHT', head: { row: 0, col: 3 }, body: [{ row: 0, col: 3 }] },
+    { id: 'f4', direction: 'RIGHT', head: { row: 0, col: 3 }, body: [] },
     {
       id: 'f5',
       direction: 'UP',
@@ -88,21 +88,36 @@ describe('LevelJsonMapper', () => {
     expect(level.board[0][4]).toBeInstanceOf(ExitCell);
   });
 
-  it('agrupa cabeza y cuerpo de cada flecha en un mismo BoardGroup (Composite)', () => {
+  it('vincula la cabeza y el cuerpo de cada flecha mediante un arrowId compartido', () => {
     // Act
     const level = mapper.toLevelDefinition(simpleLevel);
 
-    // Assert: la celda cabeza (0,0) y su celda de cuerpo (0,1) de f1
-    // deben ser el mismo BoardGroup.
+    // Assert: la celda cabeza (0,0) de f1 es una ArrowCell con dirección LEFT,
+    // y su celda de cuerpo (0,1) es una ArrowBodyCell que referencia el mismo arrowId.
     const headCell = level.board[0][0];
     const bodyCell = level.board[0][1];
-    expect(headCell).toBeInstanceOf(BoardGroup);
-    expect(headCell).toBe(bodyCell);
 
-    const components = (headCell as BoardGroup).getComponents();
-    expect(components[0]).toBeInstanceOf(ArrowCell);
-    expect((components[0] as ArrowCell).direction).toBe(Direction.LEFT);
-    // Cabeza + 1 celda de cuerpo = 2 componentes.
-    expect(components).toHaveLength(2);
+    expect(headCell).toBeInstanceOf(ArrowCell);
+    expect((headCell as ArrowCell).direction).toBe(Direction.LEFT);
+    expect((headCell as ArrowCell).arrowId).toBe('f1');
+
+    expect(bodyCell).toBeInstanceOf(ArrowBodyCell);
+    expect((bodyCell as ArrowBodyCell).arrowId).toBe('f1');
+  });
+
+  it('reconstruye el mismo DTO al aplicar toDto sobre el resultado de toLevelDefinition', () => {
+    // Act
+    const level = mapper.toLevelDefinition(simpleLevel);
+    const dto = mapper.toDto(level);
+
+    // Assert
+    expect(dto.id).toBe(simpleLevel.id);
+    expect(dto.width).toBe(simpleLevel.width);
+    expect(dto.height).toBe(simpleLevel.height);
+    expect(dto.exit).toEqual(simpleLevel.exit);
+    expect(dto.arrows).toHaveLength(simpleLevel.arrows.length);
+
+    const f1 = dto.arrows.find(arrow => arrow.id === 'f1');
+    expect(f1).toEqual(simpleLevel.arrows.find(arrow => arrow.id === 'f1'));
   });
 });
