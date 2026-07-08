@@ -93,7 +93,39 @@
         - Siempre validar que el código TypeScript compile correctamente antes de considerar una tarea como completada.
 
 
-## Tarea 3: Refactorización de Board como Aggregate Root con Lógica de Negocio Pura
+  ## Tarea 3: Fundamentos de Sprint 1 (framework HTTP, contrato de niveles, repos en memoria)
+
+      ## Tarea o problema abordado:
+        - El repositorio solo tenía la capa de dominio (Semana 1); no había framework HTTP elegido, ni endpoints, ni tests, ni CI, ni una forma acordada de transportar niveles hacia el frontend.
+        - Se necesitaba: elegir y montar Express + TypeScript, crear los dos aspectos AOP mínimos (logging y manejo centralizado de excepciones), implementar repositorios en memoria para los puertos ya existentes (`IUserRepository`, `ILevelRepository`, `IProgressRepository`), y construir el contrato `StructuredLevelJsonDto` acordado con el equipo de frontend junto con su primer consumidor real (`LevelJsonMapper`).
+
+      ## Herramienta de IA utilizada:
+        - Claude Code (Anthropic), modelo Sonnet 5, ejecutado como agente con acceso a la terminal y al sistema de archivos del repositorio.
+
+      ## Prompt o instrucción proporcionada:
+        - "Avanza con la Fase 1 del plan de Sprint 1 aprobado: monta Express + TypeScript sobre el dominio ya existente, agrega los middlewares de logging y manejo de errores como aspectos AOP, crea los repositorios en memoria para los puertos ya definidos, y construye `docs/contract/level.contract.ts` + `LevelJsonMapper` para el contrato de niveles acordado con el equipo de frontend (incluyendo `exit` y `walls`, que el dominio ya soporta con `ExitCell`/`WallCell` pero el contrato original no representaba). Corre `npm run build`, `npm run lint` y `npm test` para verificar."
+
+      ## Resultado obtenido:
+        - `src/infrastructure/http/server.ts` + `src/main.ts`: composition root de Express con `cors`/`helmet`, `requestLoggerMiddleware` y `errorHandlerMiddleware` (aspectos AOP), Swagger UI en `/docs`, y `GET /health`.
+        - `src/infrastructure/persistence/in-memory/`: `InMemoryUserRepository`, `InMemoryLevelRepository`, `InMemoryProgressRepository`, implementando los puertos ya existentes sin comprometerse aún a una base de datos concreta.
+        - `docs/contract/level.contract.ts`: contrato `StructuredLevelJsonDto` compartido con el repo de frontend.
+        - `src/infrastructure/mappers/LevelJsonMapper.ts`: traduce el contrato a `LevelDefinition` usando `LevelBuilder`/`CellFactory` ya existentes, modelando cada flecha (cabeza + cuerpo) como un único `BoardGroup` (Composite).
+        - Primeras pruebas: `ArrowCell.spec.ts` (unitaria de dominio), `LevelJsonMapper.spec.ts` (mapeo del contrato), `health.spec.ts` (integración con supertest). `npm run build`, `npm run lint` y `npm test` corren en verde.
+        - `.github/workflows/ci.yml`: primer chequeo de CI (lint + build + test) en cada PR/push a `main`.
+
+      ## Modificaciones realizadas por el equipo al resultado de la IA:
+        - Se agregó `Difficulty.EXPERT` a `LevelDefinition.ts`, que solo tenía EASY/MEDIUM/HARD, para que coincida con el `LevelDifficulty` de 4 niveles ya portado en el dominio del frontend.
+        - Se ajustó la regla `@typescript-eslint/no-unused-vars` en `.eslintrc.cjs` (`args: 'none'`) en vez de modificar `BaseLevelProcessor.ts`, ya que sus parámetros no usados en las implementaciones por defecto son intencionales (Template Method).
+        - Se descubrió que `node_modules/` (más de 5000 archivos) estaba comiteado desde el "Initial commit"; se destrackeó y se agregó `.gitignore`, en un commit aparte para no mezclar ese hallazgo con el trabajo de Sprint 1.
+        - Se corrigió el nivel de ejemplo usado en la prueba del mapper: el equipo había indicado `width: 4, height: 4`, pero las posiciones de las flechas llegan hasta fila/columna 4, lo que requiere un tablero de 5x5.
+
+      ## Lecciones aprendidas o limitaciones identificadas:
+        - El entorno donde se ejecutó esta tarea sí tenía Node.js/npm disponible, por lo que se pudo instalar dependencias y correr `build`/`lint`/`test` realmente, a diferencia del merge de dominio del frontend (ese repo se dejó documentado como pendiente de verificar localmente por no haber Flutter instalado en el entorno).
+        - Revisar el `.gitignore` (o su ausencia) antes de correr `npm install` en un repositorio heredado evita comitear accidentalmente `node_modules`.
+        - Mantener el endpoint HTTP de `/levels` fuera de Sprint 1 (solo el mapper + su prueba) permitió enfocar el sprint en la plomería sin sobre-comprometerse; el endpoint real queda para Sprint 2.
+
+
+## Tarea 4: Refactorización de Board como Aggregate Root con Lógica de Negocio Pura
 
   ## Tarea o problema abordado:
     - Auditoría y refactorización del agregado Board (anteriormente BoardGroup) en la Capa 1 de Dominio.
