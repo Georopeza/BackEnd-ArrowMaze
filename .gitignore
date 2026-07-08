@@ -3,6 +3,8 @@ dist/
 coverage/
 .env
 *.log
+.env
+*.log
 node_modules
 dist
 .env

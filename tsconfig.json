@@ -6,11 +6,21 @@
     "outDir": "dist",
     "rootDir": ".",
     "target": "ES2022",
-    "module": "CommonJS",
+    "module": "commonjs",
+    "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": true,
+    "types": ["jest", "node"]
+  },
+  "include": ["src", "docs/contract", "tests"],
+  "exclude": ["node_modules", "dist"]
     "resolveJsonModule": true,
     "declaration": false,
     "sourceMap": true

@@ -7,15 +7,18 @@ describe('ArrowCell', () => {
     const direction = Direction.RIGHT;
 
     // Act
+    const cell = new ArrowCell(direction, 'arrow-1');
     const cell = new ArrowCell(direction);
 
     // Assert
     expect(cell.type).toBe('ArrowCell');
     expect(cell.direction).toBe(Direction.RIGHT);
+    expect(cell.arrowId).toBe('arrow-1');
   });
 
   it('describe la celda incluyendo su dirección', () => {
     // Arrange
+    const cell = new ArrowCell(Direction.UP, 'arrow-1');
     const cell = new ArrowCell(Direction.UP);
 
     // Act
