@@ -289,6 +289,29 @@
     - Restaurar archivos completos desde un commit conocido-bueno fue más seguro y rápido que intentar re-diagnosticar la corrupción línea por línea, una vez confirmado por diff que no había contenido legítimo mezclado.
     - Un pipeline de CI mal alcanzado (solo `main`) es tan peligroso como no tener CI: da falsa confianza de que "está en verde" cuando en realidad nunca corrió sobre el código que realmente se está integrando.
 
+## Tarea 7: Primera corrida real de CI en `develop` — detección y corrección de deuda de lint preexistente
+
+  ## Tarea o problema abordado:
+    - Tras el push de la Tarea 6 (fix de `develop` + CI ampliado a `develop` + Capa 3 HTTP), la primera ejecución real de GitHub Actions sobre `develop` falló en el paso `npm run lint`, con los 3 errores que en tareas anteriores se habían documentado como "deuda conocida, fuera de alcance" (nunca antes se habían visto fallar en CI porque el workflow nunca había corrido sobre `develop`).
+
+  ## Herramienta de IA utilizada:
+    - Claude Code (Anthropic), modelo Claude Sonnet 5, agente con acceso a terminal.
+
+  ## Prompt o instrucción proporcionada:
+    - Instrucción implícita de continuar la verificación ya en curso ("verifica el repositorio") tras confirmar el push; al detectar el fallo de CI el agente decidió corregirlo por ser un cambio de 3 líneas de bajo riesgo, sin requerir una nueva instrucción explícita del equipo.
+
+  ## Resultado obtenido:
+    - `CellFactory.test.ts`: eliminado un import (`Cell`) sin usar.
+    - `CellFactory.ts`: reemplazado el tipo prohibido `{}` en `CellType` por `Record<never, never>`, preservando el mismo comportamiento (permitir cualquier string además de los literales conocidos).
+    - `LevelActionService.ts`: se documentó con un comentario `eslint-disable-next-line` el `while (true)` intencional de `isPathClear` (termina por los `return` internos al llegar al borde del tablero o a un bloqueo), en vez de reescribir la lógica de recorrido.
+    - Verificado con `gh run watch`: la ejecución de CI en GitHub (no solo local) pasó lint, build y test en verde por primera vez sobre `develop`.
+
+  ## Modificaciones realizadas por el equipo al resultado de la IA:
+    - Ninguna — cambios de una línea cada uno, sin ambigüedad de diseño que requiriera decisión del equipo.
+
+  ## Lecciones aprendidas o limitaciones identificadas:
+    - Confirma la lección de la Tarea 6: la deuda "documentada como fuera de alcance" solo deja de ser invisible cuando algo la ejercita automáticamente. Verificar `npm run lint` en local no es lo mismo que ver la ejecución real de GitHub Actions pasar — el equipo debería revisar el estado de los checks en GitHub, no solo confiar en los comandos corridos localmente, antes de dar una tarea por cerrada.
+
 ## Evaluación crítica
 
    ## Porcentaje aproximado del código que contó con asistencia de IA:
