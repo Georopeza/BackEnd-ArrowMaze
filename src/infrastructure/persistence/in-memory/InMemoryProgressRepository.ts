@@ -2,7 +2,6 @@ import { IProgressRepository } from '../../../domain/repositories/IProgressRepos
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { PlayerProgress } from '../../../domain/entities/PlayerProgress';
 import { LeaderBoardEntry } from '../../../domain/value-objects/LeaderBoardEntry';
-import { PlayerProgress } from '../../../domain/entities/PlayerProgress';
 
 /**
  * Implementación en memoria de `IProgressRepository`.
@@ -57,11 +56,5 @@ export class InMemoryProgressRepository implements IProgressRepository {
     );
 
     return entries;
-  /** Obtiene los mejores puntajes registrados para un nivel, de mayor a menor. */
-  public async getGlobalLeaderboard(levelId: string, limit: number): Promise<PlayerProgress[]> {
-    return [...this.progressByKey.values()]
-      .filter((progress) => progress.levelId === levelId)
-      .sort((a, b) => b.highScore - a.highScore)
-      .slice(0, limit);
   }
 }
