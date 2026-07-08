@@ -1,0 +1,30 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Arrow Maze API",
+    "version": "0.1.0",
+    "description": "API REST para Arrow Maze. En Sprint 1 solo documenta /health; /auth, /progress, /leaderboard y /levels se agregan en Sprint 2."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Chequeo de disponibilidad del servidor",
+        "responses": {
+          "200": {
+            "description": "El servidor está operativo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,6 +7,10 @@ export enum Difficulty {
   EASY = 'EASY',
   MEDIUM = 'MEDIUM',
   HARD = 'HARD',
+  // Agregado en Sprint 1 para alinear con el LevelDifficulty del frontend
+  // (rama Develop del repo Arrow-Maze-Escape-Puzzle), que ya define un
+  // cuarto nivel de dificultad.
+  EXPERT = 'EXPERT',
 }
 
 export interface IScoreStrategy {
