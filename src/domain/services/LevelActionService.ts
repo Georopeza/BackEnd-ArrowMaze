@@ -27,6 +27,7 @@ export class LevelActionService {
     const dir = arrow.getDirection();
     let currentPos = arrow.getHead();
 
+    // eslint-disable-next-line no-constant-condition -- termina por los `return` internos al llegar al borde o a un bloqueo.
     while (true) {
       const nextPos = this.calculateNextPosition(currentPos, dir);
 

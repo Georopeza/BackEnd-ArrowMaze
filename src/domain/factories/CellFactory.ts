@@ -10,7 +10,7 @@ import { Direction } from '../value-objects/Direction';
 
 // Definimos los tipos fijos del juego base, pero dejamos la puerta abierta a strings libres
 export type DefaultCellType = 'ArrowCell' | 'ArrowBodyCell' | 'WallCell' | 'EmptyCell' | 'ExitCell';
-export type CellType = DefaultCellType | (string & {});
+export type CellType = DefaultCellType | (string & Record<never, never>);
 
 export class CellFactory {
   private registry: Map<string, (data?: any) => Cell> = new Map();

@@ -3,7 +3,6 @@ import { ArrowCell } from '../entities/ArrowCell';
 import { ArrowBodyCell } from '../entities/ArrowBodyCell';
 import { WallCell } from '../entities/WallCell';
 import { Direction } from '../value-objects/Direction';
-import { Cell } from '../entities/Cell';
 
 describe('CellFactory - Domain Service', () => {
   let factory: CellFactory;
