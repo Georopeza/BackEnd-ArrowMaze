@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Arrow Maze API",
-    "version": "0.1.0",
-    "description": "API REST para Arrow Maze. En Sprint 1 solo documenta /health; /auth, /progress, /leaderboard y /levels se agregan en Sprint 2."
+    "version": "0.2.0",
+    "description": "API REST para Arrow Maze: autenticación, progreso, leaderboard y niveles."
   },
   "paths": {
     "/health": {
@@ -23,6 +23,123 @@
               }
             }
           }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Registra un nuevo usuario",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string", "minLength": 3, "maxLength": 20 },
+                  "password": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Usuario creado" },
+          "400": { "description": "Body inválido" },
+          "409": { "description": "El username ya existe" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Inicia sesión y devuelve un token JWT",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login exitoso, devuelve token" },
+          "400": { "description": "Body inválido" },
+          "401": { "description": "Credenciales inválidas" }
+        }
+      }
+    },
+    "/progress/sync": {
+      "post": {
+        "summary": "Sincroniza el progreso de un jugador en un nivel",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["userId", "levelId", "score", "moves", "timeInSeconds", "completed"],
+                "properties": {
+                  "userId": { "type": "string" },
+                  "levelId": { "type": "string" },
+                  "score": { "type": "integer" },
+                  "moves": { "type": "integer" },
+                  "timeInSeconds": { "type": "integer" },
+                  "completed": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Progreso sincronizado" },
+          "400": { "description": "Body inválido" },
+          "404": { "description": "El nivel no existe" }
+        }
+      }
+    },
+    "/leaderboard/{levelId}": {
+      "get": {
+        "summary": "Top de clasificación de un nivel",
+        "parameters": [
+          { "name": "levelId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Lista de entradas del leaderboard" }
+        }
+      }
+    },
+    "/levels": {
+      "get": {
+        "summary": "Lista todos los niveles disponibles",
+        "responses": {
+          "200": { "description": "Lista de niveles" }
+        }
+      }
+    },
+    "/levels/{id}": {
+      "get": {
+        "summary": "Obtiene un nivel por id",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Definición del nivel" },
+          "404": { "description": "El nivel no existe" }
+        }
+      },
+      "put": {
+        "summary": "Crea o actualiza la definición de un nivel",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Nivel guardado" },
+          "422": { "description": "El nivel no es resoluble" }
         }
       }
     }
