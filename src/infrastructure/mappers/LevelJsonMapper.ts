@@ -18,6 +18,15 @@ import {
  * Traduce el contrato compartido `StructuredLevelJsonDto` (wire format
  * acordado con el frontend) al agregado de dominio `LevelDefinition` y
  * viceversa, reutilizando el `LevelBuilder`/`CellFactory` ya existentes.
+import { EmptyCell } from '../../domain/entities/EmptyCell';
+import { BoardGroup } from '../../domain/entities/BoardGroup';
+import { Difficulty, LevelDefinition } from '../../domain/entities/LevelDefinition';
+import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
+
+/**
+ * Traduce el contrato compartido `StructuredLevelJsonDto` (wire format
+ * acordado con el frontend) al agregado de dominio `LevelDefinition`,
+ * reutilizando el `LevelBuilder` y la `CellFactory` ya existentes.
  *
  * Vive en infraestructura (no en dominio) porque conoce la forma exacta
  * del JSON de transporte; el dominio no debe saber que ese formato existe.
@@ -40,6 +49,9 @@ export class LevelJsonMapper {
    * celdas como vacías, luego se sobrescriben los muros, luego la salida,
    * y por último las flechas (cada una como una `ArrowCell` cabeza más sus
    * `ArrowBodyCell` de cuerpo, vinculadas por `arrowId` vía `LevelBuilder.addArrow`).
+   * y por último las flechas (cada una como un `BoardGroup` que agrupa su
+   * celda "cabeza" y sus celdas de "cuerpo", aplicando el patrón
+   * Composite ya usado en el dominio).
    */
   public toLevelDefinition(dto: StructuredLevelJsonDto): LevelDefinition {
     const builder = new LevelBuilder()
@@ -125,5 +137,22 @@ export class LevelJsonMapper {
       walls: walls.length > 0 ? walls : undefined,
       arrows,
     };
+      const headCell = this.cellFactory.createCell('ArrowCell', {
+        direction: arrow.direction,
+      });
+      const group = new BoardGroup([headCell]);
+
+      const bodyPositions = arrow.body ?? [];
+      for (let i = 0; i < bodyPositions.length; i++) {
+        group.add(new EmptyCell());
+      }
+
+      builder.addCell(arrow.head.row, arrow.head.col, group);
+      for (const bodyPosition of bodyPositions) {
+        builder.addCell(bodyPosition.row, bodyPosition.col, group);
+      }
+    }
+
+    return builder.build();
   }
 }

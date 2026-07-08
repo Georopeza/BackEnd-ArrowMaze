@@ -124,7 +124,7 @@
         - Revisar el `.gitignore` (o su ausencia) antes de correr `npm install` en un repositorio heredado evita comitear accidentalmente `node_modules`.
         - Mantener el endpoint HTTP de `/levels` fuera de Sprint 1 (solo el mapper + su prueba) permitió enfocar el sprint en la plomería sin sobre-comprometerse; el endpoint real queda para Sprint 2.
 
-## Tarea 3.1: Refactorización de Board como Aggregate Root con Lógica de Negocio Pura
+## Tarea 4: Refactorización de Board como Aggregate Root con Lógica de Negocio Pura
 
   ## Tarea o problema abordado:
     - Auditoría y refactorización del agregado Board (anteriormente BoardGroup) en la Capa 1 de Dominio.

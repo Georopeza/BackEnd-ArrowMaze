@@ -3,6 +3,8 @@ import { Difficulty } from '../../../src/domain/entities/LevelDefinition';
 import { ArrowCell } from '../../../src/domain/entities/ArrowCell';
 import { ArrowBodyCell } from '../../../src/domain/entities/ArrowBodyCell';
 import { ExitCell } from '../../../src/domain/entities/ExitCell';
+import { ExitCell } from '../../../src/domain/entities/ExitCell';
+import { BoardGroup } from '../../../src/domain/entities/BoardGroup';
 import { Direction } from '../../../src/domain/value-objects/Direction';
 import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
 
@@ -26,6 +28,7 @@ const simpleLevel: StructuredLevelJsonDto = {
     { id: 'f2', direction: 'RIGHT', head: { row: 1, col: 1 }, body: [{ row: 1, col: 0 }] },
     { id: 'f3', direction: 'DOWN', head: { row: 1, col: 2 }, body: [{ row: 0, col: 2 }] },
     { id: 'f4', direction: 'RIGHT', head: { row: 0, col: 3 }, body: [] },
+    { id: 'f4', direction: 'RIGHT', head: { row: 0, col: 3 }, body: [{ row: 0, col: 3 }] },
     {
       id: 'f5',
       direction: 'UP',
@@ -119,5 +122,21 @@ describe('LevelJsonMapper', () => {
 
     const f1 = dto.arrows.find(arrow => arrow.id === 'f1');
     expect(f1).toEqual(simpleLevel.arrows.find(arrow => arrow.id === 'f1'));
+  it('agrupa cabeza y cuerpo de cada flecha en un mismo BoardGroup (Composite)', () => {
+    // Act
+    const level = mapper.toLevelDefinition(simpleLevel);
+
+    // Assert: la celda cabeza (0,0) y su celda de cuerpo (0,1) de f1
+    // deben ser el mismo BoardGroup.
+    const headCell = level.board[0][0];
+    const bodyCell = level.board[0][1];
+    expect(headCell).toBeInstanceOf(BoardGroup);
+    expect(headCell).toBe(bodyCell);
+
+    const components = (headCell as BoardGroup).getComponents();
+    expect(components[0]).toBeInstanceOf(ArrowCell);
+    expect((components[0] as ArrowCell).direction).toBe(Direction.LEFT);
+    // Cabeza + 1 celda de cuerpo = 2 componentes.
+    expect(components).toHaveLength(2);
   });
 });

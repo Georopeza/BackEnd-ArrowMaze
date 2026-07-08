@@ -8,6 +8,7 @@ describe('ArrowCell', () => {
 
     // Act
     const cell = new ArrowCell(direction, 'arrow-1');
+    const cell = new ArrowCell(direction);
 
     // Assert
     expect(cell.type).toBe('ArrowCell');
@@ -18,6 +19,7 @@ describe('ArrowCell', () => {
   it('describe la celda incluyendo su dirección', () => {
     // Arrange
     const cell = new ArrowCell(Direction.UP, 'arrow-1');
+    const cell = new ArrowCell(Direction.UP);
 
     // Act
     const description = cell.getDescription();
