@@ -1,0 +1,38 @@
+%% Diagrama de capas — Clean Architecture (backend Arrow Maze)
+%%
+%% Placeholder de Sprint 1: las flechas van de afuera hacia adentro
+%% (las capas externas dependen de las internas, nunca al revés). Se
+%% refinará en Sprint 3 con el detalle completo de puertos/adaptadores
+%% una vez existan los casos de uso y controladores de Sprint 2.
+flowchart TB
+    subgraph L4["Capa 4 — Infrastructure (frameworks & drivers)"]
+        direction TB
+        Express["Servidor Express, rutas, middlewares"]
+        InMemory["Repositorios en memoria (adaptadores de ILevelRepository, IUserRepository, IProgressRepository)"]
+        Mappers["LevelJsonMapper (adaptador del contrato compartido con el frontend)"]
+    end
+    subgraph L3["Capa 3 — Interface Adapters"]
+        direction TB
+        Controllers["Controladores / route handlers (Sprint 2)"]
+    end
+    subgraph L2["Capa 2 — Application (casos de uso)"]
+        direction TB
+        UseCases["Casos de uso (Sprint 2): Auth, Progress, Leaderboard, Levels"]
+    end
+    subgraph L1["Capa 1 — Domain (entidades)"]
+        direction TB
+        Entities["Jerarquía de Cell, LevelDefinition, User, PlayerProgress, puertos de repositorio"]
+    end
+
+    L4 -- depende de --> L3
+    L3 -- depende de --> L2
+    L2 -- depende de --> L1
+
+    classDef domain fill:#e8f4ea,stroke:#2e7d32;
+    classDef app fill:#e8eef8,stroke:#1565c0;
+    classDef adapters fill:#fdf3e2,stroke:#ef6c00;
+    classDef infra fill:#f8e8ee,stroke:#ad1457;
+    class Entities domain;
+    class UseCases app;
+    class Controllers adapters;
+    class Express,InMemory,Mappers infra;
