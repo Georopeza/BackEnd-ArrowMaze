@@ -225,18 +225,52 @@
     - Se detectó al ejecutar los tests (no en la revisión inicial) que `BoardRenderer.ts` accedía a propiedades privadas de `Arrow` (`headPosition`, `id`) que ya no eran públicas; se corrigió usando los getters existentes (`getHead()`, `getId()`) al mismo tiempo que se quitaba el `console.log`.
     - Aún queda pendiente extender `LevelSolvabilityValidator`'s DTO externo (`StructuredLevelJsonDto`) para que un nivel real en JSON declare sus `walls`, y conectar `LevelToBoardMapper` con un futuro caso de uso una vez exista la Capa 2 (Use Cases).
 
+## Tarea 5: Fusión de `feature/backend-foundations`, reparación de bugs de compilación y construcción de la Capa 2 (Use Cases)
+
+  ## Tarea o problema abordado:
+    - La rama `feature/use-cases-layer` (creada sobre `develop`) no tenía todavía `src/infrastructure/`, el contrato de niveles ni las dependencias de Sprint 1 (Express, JWT, bcrypt); todo eso solo existía en `feature/backend-foundations`, sin fusionar.
+    - `src/application/` seguía vacío (solo `.gitkeep`): faltaba construir la Capa 2 (Casos de Uso) de la Clean Architecture, requisito de la rúbrica del curso y prerrequisito para los endpoints de backend evaluados (auth, progreso, leaderboard, niveles).
+    - Antes de poder escribir esa capa, una auditoría del código heredado de `feature/backend-foundations` reveló que no compilaba ni corría: `LevelJsonMapper.ts` importaba una clase `BoardGroup` inexistente (residuo del Composite ya eliminado en la Tarea 4) con una ruta de import mal calculada, `InMemoryProgressRepository` no implementaba el método real de `IProgressRepository` (`getLeaderboardByLevel`) sino uno distinto sin relación (`getGlobalLeaderboard`), y había dos configuraciones de Jest (`jest.config.js` y `jest.config.ts`) en conflicto entre las dos ramas.
+
+  ## Herramienta de IA utilizada:
+    - Claude Code (Anthropic), modelo Claude Sonnet 5, ejecutado como agente con acceso a la terminal y al sistema de archivos del repositorio, en modo de planificación explícita (el agente presentó un plan detallado para aprobación antes de tocar código).
+
+  ## Prompt o instrucción proporcionada:
+    - "Vamos con los casos de uso" (instrucción de alto nivel, sin especificar alcance ni archivos; el agente exploró el dominio y la infraestructura existentes, identificó los bugs de compilación como bloqueantes, y propuso un plan de 6 pasos —fusión de rama, corrección de bugs, puertos de aplicación, errores tipados, DTOs, casos de uso con tests— que el equipo aprobó antes de la implementación).
+
+  ## Resultado obtenido:
+    - Fusión de `origin/feature/backend-foundations` en `feature/use-cases-layer`, resolviendo conflictos en `.gitignore`, `AI_USAGE.md` (reordenado como Tarea 3/3.1 para no perder ninguna de las dos historias), `package.json`, `package-lock.json` y `tsconfig.json`.
+    - `LevelJsonMapper.ts` reescrito para construir flechas con `LevelBuilder.addArrow(...)` en vez del `BoardGroup` inexistente, con la ruta de import del contrato corregida; se le agregó además el mapeo inverso `toDto()` (dominio → wire format), necesario para los casos de uso de lectura de niveles.
+    - `InMemoryProgressRepository.ts` corregido para implementar realmente `getLeaderboardByLevel(levelId, limit): Promise<LeaderBoardEntry[]>`, resolviendo el `username` de cada entrada vía `IUserRepository` (antes el ranking no exponía nombres de usuario).
+    - `jest.config.js`/`jest.config.ts` consolidados en una sola configuración que reconoce ambas convenciones de nombre de test ya presentes en el repo (`*.test.ts` de dominio, `*.spec.ts` de infraestructura/aplicación).
+    - Nueva Capa 2 en `src/application/`: puerto `ITokenService` (`ports/`), errores tipados con `statusCode` HTTP (`errors/`: `UserAlreadyExistsError`, `InvalidCredentialsError`, `UserNotFoundError`, `LevelNotFoundError`, `LevelNotSolvableError`), DTOs (`dto/AuthDtos.ts`, `dto/ProgressDtos.ts`), y 7 casos de uso (`use-cases/`): `RegisterUserUseCase`, `LoginUserUseCase`, `SyncProgressUseCase`, `GetLeaderboardUseCase`, `ListLevelsUseCase`, `GetLevelUseCase`, `UpsertLevelUseCase` (esta última valida solvabilidad con `LevelSolvabilityValidator` antes de persistir).
+    - 16 tests unitarios AAA nuevos en `tests/unit/application/`, con mocks manuales de los puertos, siguiendo la convención `should_[resultado]_when_[condición]`.
+    - Verificación real: `npm run build` sin errores, `npm test` con 25 suites / 90 tests en verde, `npm run lint` sin errores nuevos (quedan 3 preexistentes en el dominio, fuera de este alcance).
+
+  ## Modificaciones realizadas por el equipo al resultado de la IA:
+    - Se detectó, al correr los tests por primera vez tras la reescritura del mapper, que el nivel de ejemplo usado en `LevelJsonMapper.spec.ts` tenía una flecha cuyo `body` duplicaba la posición de su propia `head` — un dato que el `BoardGroup` original toleraba (mismo objeto reasignado dos veces) pero que con `ArrowCell`/`ArrowBodyCell` separados sobrescribía la cabeza y producía un error real de invariante de dominio (`ArrowBodyCell` huérfano). Se corrigió el fixture, no el código de dominio.
+    - El equipo confirmó explícitamente mantener el alcance de esta tarea limitado a la Capa 2 (Casos de Uso), dejando fuera a propósito las rutas HTTP/controllers (Capa 3, Interface Adapters) para una tarea separada.
+    - El primer intento de `git commit` con un mensaje multilínea vía PowerShell `-m` falló por un problema de parseo de la shell (paréntesis en el mensaje); se corrigió escribiendo el mensaje a un archivo temporal y usando `git commit -F`.
+
+  ## Lecciones aprendidas o limitaciones identificadas:
+    - El `AI_USAGE.md` de la rama `feature/backend-foundations` documentaba `npm run build`, `npm run lint` y `npm test` corriendo en verde para esa rama de forma aislada; eso no garantizó que siguiera siendo cierto al fusionarla con otra rama que había evolucionado el dominio en paralelo (el `BoardGroup` que `LevelJsonMapper` esperaba ya no existía). Fusionar ramas de features en Clean Architecture requiere re-verificar la integración, no solo cada rama por separado.
+    - Un caso de uso que depende de una interfaz de puerto no es suficiente por sí solo para garantizar corrección: `InMemoryProgressRepository` compilaba y "parecía" cumplir el contrato porque TypeScript no señaló el método faltante hasta que algo intentó invocarlo con la firma exacta de la interfaz.
+    - Mantener un puerto específico de la capa de aplicación (`ITokenService`) separado de los puertos de dominio (`IUserRepository`, etc.) hizo explícito que "sesión/token" es una decisión de orquestación de casos de uso, no una regla del juego — coherente con la Capa 2 solo dependiendo de interfaces definidas en ella misma.
+
 ## Evaluación crítica
 
    ## Porcentaje aproximado del código que contó con asistencia de IA:
   - 100% del código inicial de `User`, `PlayerProgress`, interfaces de repositorio, `LevelBuilder` y `BaseLevelProcessor` fue generado por IA.
   - 30% del código de `LevelDefinition` fue corregido manualmente para aceptar 6 parámetros en lugar de 4.
   - 80% de la documentación y comentarios fue generado por IA y validado manualmente.
+  - 100% de la Capa 2 (Casos de Uso, Tarea 5: DTOs, puertos, errores tipados, 7 casos de uso y sus 16 tests) fue generado por IA a partir de un plan explícito revisado antes de implementar; 0% requirió corrección manual posterior más allá del fixture de test descrito en la Tarea 5.
 
 
    ## Casos donde la IA produjo resultados incorrectos o subóptimos y cómo se detectaron y corregidos:
   1) La IA no creó la carpeta `src/domain/entities` en la primera aplicación (fue un error de omisión en la ejecución manual). Se detectó porque se verificó manualmente la estructura creada en el repositorio. Se corrigió creando manualmente la carpeta faltante.
   2) Se detectó la duplicación del contrato `ILevelRepository` en `LevelDefinition.ts`; se corrigió moviendo el contrato a `src/domain/repositories/ILevelRepository.ts`.
   3) El Builder generaba 6 argumentos para `LevelDefinition` (incluyendo `maxMoves` y `maxTimeInSeconds`), pero el constructor solo aceptaba 4. Se detectó durante la compilación TypeScript. Se corrigió actualizando el constructor de `LevelDefinition` para aceptar los 6 parámetros, manteniéndolos como propiedades readonly en la clase.
+  4) (Tarea 5) `LevelJsonMapper.ts`, generado en la Tarea 3 sobre una rama distinta, quedó referenciando una clase (`BoardGroup`) que ya no existía tras la refactorización de dominio de la Tarea 4 en otra rama — un caso de divergencia entre ramas, no un error de la IA en el momento en que se generó cada una, pero que solo se detectó al fusionarlas y compilar.
   - No hubo errores conceptuales en el diseño de patrones o la arquitectura propuesta.
 
    ## Reflexión del equipo sobre el impacto de la IA en la productividad y calidad del código:
@@ -245,3 +279,4 @@
   - La calidad del código es muy alta: el dominio es puro, testeable y completamente desacoplado de frameworks o persistencia.
   - La principal lección fue la necesidad de revisar la coherencia entre patrones creacionales (Builder) y sus constructores target.
   - Recomendación: usar IA para generar el código inicial y los patrones, pero siempre compilar y validar la coherencia de firmas de funciones.
+  - (Tarea 5) Cuando distintas ramas evolucionan el dominio en paralelo, la IA es especialmente útil para el trabajo mecánico de fusión (resolver conflictos, adaptar un mapper a una interfaz que cambió), pero el equipo debe seguir corriendo `build`/`lint`/`test` tras cada fusión en vez de confiar en que cada rama "ya estaba verde" por separado.
