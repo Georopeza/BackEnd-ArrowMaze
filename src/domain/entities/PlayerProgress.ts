@@ -40,16 +40,20 @@ export class PlayerProgress {
   /**
    * Actualiza el progreso solo si el nuevo resultado es mejor.
    * Reemplaza el highScore si es mayor, y actualiza movimientos/tiempo si son menores.
+   * El estado "completado" no se infiere del puntaje: lo determina quien invoca este método
+   * (típicamente comparando contra Board.isSolved(), es decir, si ya no quedan flechas en el tablero),
+   * y una vez completado permanece completado aunque una corrida posterior sea peor.
    * @param score nuevo puntaje.
    * @param moves nuevos movimientos.
    * @param time nuevo tiempo en segundos.
+   * @param completed si esta corrida terminó el nivel (todas las flechas fuera del tablero).
    * @returns nueva instancia de PlayerProgress actualizada.
    */
-  public updateScore(score: number, moves: number, time: number): PlayerProgress {
+  public updateScore(score: number, moves: number, time: number, completed: boolean): PlayerProgress {
     const betterScore = score > this.highScore ? score : this.highScore;
     const betterMoves = moves < this.minMoves ? moves : this.minMoves;
     const betterTime = time < this.minTimeInSeconds ? time : this.minTimeInSeconds;
-    const completed = this.isCompleted || score >= betterScore;
+    const isNowCompleted = this.isCompleted || completed;
 
     return new PlayerProgress(
       this.id,
@@ -58,7 +62,7 @@ export class PlayerProgress {
       betterScore,
       betterMoves,
       betterTime,
-      completed,
+      isNowCompleted,
     );
   }
 }

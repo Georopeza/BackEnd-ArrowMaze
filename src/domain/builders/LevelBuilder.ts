@@ -1,4 +1,7 @@
 import { Cell } from '../entities/Cell';
+import { ArrowCell } from '../entities/ArrowCell';
+import { ArrowBodyCell } from '../entities/ArrowBodyCell';
+import { Direction } from '../value-objects/Direction';
 import { Difficulty, LevelDefinition } from '../entities/LevelDefinition';
 
 // Patrón Builder para construir LevelDefinition de forma incremental.
@@ -40,6 +43,20 @@ export class LevelBuilder {
     }
 
     this.board[row][col] = cell;
+    return this;
+  }
+
+  // Agrega una flecha completa (cabeza + cuerpo opcional) en un solo paso, sin que el
+  // llamador tenga que armar manualmente cada ArrowCell/ArrowBodyCell y coordinar sus arrowId.
+  public addArrow(
+    row: number,
+    col: number,
+    direction: Direction,
+    arrowId: string,
+    body: { row: number; col: number }[] = [],
+  ): this {
+    this.addCell(row, col, new ArrowCell(direction, arrowId));
+    body.forEach(pos => this.addCell(pos.row, pos.col, new ArrowBodyCell(arrowId)));
     return this;
   }
 
