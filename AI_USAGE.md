@@ -257,6 +257,38 @@
     - Un caso de uso que depende de una interfaz de puerto no es suficiente por sí solo para garantizar corrección: `InMemoryProgressRepository` compilaba y "parecía" cumplir el contrato porque TypeScript no señaló el método faltante hasta que algo intentó invocarlo con la firma exacta de la interfaz.
     - Mantener un puerto específico de la capa de aplicación (`ITokenService`) separado de los puertos de dominio (`IUserRepository`, etc.) hizo explícito que "sesión/token" es una decisión de orquestación de casos de uso, no una regla del juego — coherente con la Capa 2 solo dependiendo de interfaces definidas en ella misma.
 
+## Tarea 6: Reparación de `develop` tras un merge manual defectuoso y construcción de la Capa 3 (Interface Adapters / rutas HTTP)
+
+  ## Tarea o problema abordado:
+    - El equipo resolvió manualmente conflictos de merge de los PR #10/#11 (probablemente aceptando "ambos lados" en un editor web sin dejar marcadores `<<<<<<<`), dejando `develop` con 5 archivos corruptos: contenido viejo y nuevo pegado sin remover el código muerto, incluyendo un `tsconfig.json` con JSON inválido y `LevelJsonMapper.ts`/`InMemoryProgressRepository.ts` con código inalcanzable después de un `return`. El repositorio compilaba en apariencia porque nadie había corrido `npm run build` tras el merge.
+    - Adicionalmente, el pipeline de CI (`ci.yml`) solo se disparaba en `main`, nunca en `develop` ni en PRs hacia `develop` — por eso nada detectó la corrupción automáticamente.
+    - Con `develop` ya sano, la Capa 2 (Casos de Uso, Tarea 5) seguía sin superficie HTTP: el backend solo exponía `/health`, y ninguno de los puertos `IPasswordHasher`/`ITokenService` tenía una implementación real (solo dobles de prueba).
+
+  ## Herramienta de IA utilizada:
+    - Claude Code (Anthropic), modelo Claude Sonnet 5, ejecutado como agente con acceso a la terminal, en modo autónomo con checkpoints de aprobación explícita para acciones sensibles (push a rama compartida, cambios de configuración de GitHub).
+
+  ## Prompt o instrucción proporcionada:
+    - "Ahora vamos a trabajar en la rama develop [...] necesito que hagas una revisión exhaustiva del repositorio y busques inconsistencias [...] es para dejarlo completamente limpio y funcional" → tras confirmar los 5 archivos corruptos y pedir aprobación explícita, "Sí, restaura los 5 archivos y corre la suite completa".
+    - "hazle push, verifica el repositorio y dime cual es el siguiente paso para avanzar en el proyecto" → "Avancemos" → al elegir entre arreglar CI, rutas HTTP, o ambos: "Ambos, CI primero".
+
+  ## Resultado obtenido:
+    - Diagnóstico: se detectó la corrupción no por lectura de código sino por un mecanismo automático del propio agente (un sistema de "nota de archivo modificado" que expuso el diff exacto de cada uno de los 5 archivos, mostrando imports y bloques duplicados).
+    - Restauración: los 5 archivos (`tsconfig.json`, `LevelJsonMapper.ts`, `InMemoryProgressRepository.ts`, `ArrowCell.spec.ts`, `LevelJsonMapper.spec.ts`) se restauraron verbatim desde el commit `020115c` (el último verificado en verde antes del merge a `develop`), tras confirmar por diff que el contenido extra en `develop` era 100% código muerto duplicado, sin nada legítimo que preservar.
+    - CI: `ci.yml` ahora corre en `pull_request`/`push` para `main` **y** `develop`, no solo `main`.
+    - Capa 3 nueva: `BcryptPasswordHasher`/`JwtTokenService` (implementaciones reales de los puertos), `container.ts` (composition root), `asyncHandler.ts`, y 4 routers (`auth`, `progress`, `leaderboard`, `levels`) conectando los 7 casos de uso a endpoints Express reales. `errorHandler.middleware.ts` ahora traduce `ApplicationError`→su `statusCode` y `ZodError`→400 en vez de colapsar todo a 500. `openapi.json` documenta los endpoints nuevos.
+    - Verificación real (no solo tests): se levantó el servidor con `npm run dev` y se probó cada endpoint con `curl` contra el proceso vivo — registro, login, `PUT`/`GET` de niveles (resoluble y no resoluble), sincronización de progreso, leaderboard.
+    - 12 tests de integración nuevos con `supertest` (`tests/integration/auth|levels|progress-leaderboard.spec.ts`).
+
+  ## Modificaciones realizadas por el equipo al resultado de la IA:
+    - Se le pidió explícitamente confirmación antes de cada acción irreversible o visible para otros: restaurar archivos, hacer push a `develop`, e instalar/autenticar `gh` CLI (incluyendo completar manualmente el flujo OAuth de dispositivo en el navegador).
+    - El clasificador de permisos del propio agente bloqueó automáticamente un intento de activar *branch protection* en `develop` vía la API de GitHub por no haber sido pedido explícitamente ("arregla el CI" no autoriza cambiar reglas de protección de rama); el equipo decidió no activarlo en esta sesión.
+    - Durante la prueba manual con `curl` se detectó un bug real que ningún test unitario había cubierto: la ruta de login reutilizaba el schema de `zod` del registro (contraseña mínimo 8 caracteres), así que una contraseña incorrecta pero de menos de 8 caracteres devolvía `400` en vez del `401` correcto — filtrando una regla de validación a un llamador no autenticado. Se separaron los schemas de registro/login y se agregó una prueba de regresión.
+
+  ## Lecciones aprendidas o limitaciones identificadas:
+    - Los tests automatizados no habrían detectado el bug de la contraseña corta en login porque ningún test unitario o de integración probó específicamente ese largo de contraseña contra esa ruta; solo apareció al ejercitar la API real con `curl` con datos "de la vida real" en vez de fixtures ya pensados para pasar.
+    - Restaurar archivos completos desde un commit conocido-bueno fue más seguro y rápido que intentar re-diagnosticar la corrupción línea por línea, una vez confirmado por diff que no había contenido legítimo mezclado.
+    - Un pipeline de CI mal alcanzado (solo `main`) es tan peligroso como no tener CI: da falsa confianza de que "está en verde" cuando en realidad nunca corrió sobre el código que realmente se está integrando.
+
 ## Evaluación crítica
 
    ## Porcentaje aproximado del código que contó con asistencia de IA:
