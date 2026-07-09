@@ -1,11 +1,16 @@
 import { Cell } from './Cell';
 import { ExitCell } from './ExitCell';
 import { ArrowCell } from './ArrowCell';
+import { ArrowBodyCell } from './ArrowBodyCell';
 
 export enum Difficulty {
   EASY = 'EASY',
   MEDIUM = 'MEDIUM',
   HARD = 'HARD',
+  // Agregado en Sprint 1 para alinear con el LevelDifficulty del frontend
+  // (rama Develop del repo Arrow-Maze-Escape-Puzzle), que ya define un
+  // cuarto nivel de dificultad.
+  EXPERT = 'EXPERT',
 }
 
 export interface IScoreStrategy {
@@ -58,6 +63,18 @@ export class LevelDefinition {
     const hasArrows = flatCells.some(cell => cell instanceof ArrowCell);
     if (!hasArrows) {
       throw new Error('Level board must contain at least one ArrowCell to be playable');
+    }
+
+    // 6. Toda celda de cuerpo (ArrowBodyCell) debe referenciar una cabeza (ArrowCell) existente,
+    // de lo contrario la flecha quedaría incompleta al reconstruirla como Board jugable.
+    const headArrowIds = new Set(
+      flatCells.filter((cell): cell is ArrowCell => cell instanceof ArrowCell).map(cell => cell.arrowId)
+    );
+    const hasOrphanBody = flatCells.some(
+      cell => cell instanceof ArrowBodyCell && !headArrowIds.has(cell.arrowId)
+    );
+    if (hasOrphanBody) {
+      throw new Error('Every ArrowBodyCell must reference an existing ArrowCell arrowId');
     }
 
     this.id = id;

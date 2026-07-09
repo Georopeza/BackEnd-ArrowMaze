@@ -1,10 +1,13 @@
 import { Board } from '../aggregates/Board';
 import { Position } from '../value-objects/Position';
 import { Direction } from '../value-objects/Direction';
+import { getStep } from '../value-objects/DirectionVector';
 import { Arrow } from '../entities/Arrow';
+import { WallCell } from '../entities/WallCell';
 
 export class LevelActionService {
-  // Intenta interactuar con una celda del tablero para eliminar una flecha si el camino está despejado.
+  // Ejecuta la interacción de disparo sobre la celda indicada: si hay una flecha
+  // y su camino está despejado, la saca del tablero y limpia sus celdas.
   public interactWithCell(board: Board, row: number, col: number): boolean {
     const pos = new Position(row, col);
     const arrow = board.findArrowAt(pos);
@@ -12,15 +15,19 @@ export class LevelActionService {
 
     if (!this.isPathClear(board, arrow)) return false;
 
+    // limpiar posiciones y eliminar flecha del board
+    board.clearPositions(arrow.getAllPositions());
     board.removeArrowById(arrow.getId().value);
     return true;
   }
 
-  // Verifica que la trayectoria de una flecha no esté bloqueada por otra flecha activa.
+  // Regla de Bloqueo: recorre la línea de visión de la flecha hacia el borde,
+  // bloqueando si encuentra otra flecha o una pared en el camino.
   private isPathClear(board: Board, arrow: Arrow): boolean {
     const dir = arrow.getDirection();
     let currentPos = arrow.getHead();
 
+    // eslint-disable-next-line no-constant-condition -- termina por los `return` internos al llegar al borde o a un bloqueo.
     while (true) {
       const nextPos = this.calculateNextPosition(currentPos, dir);
 
@@ -28,28 +35,18 @@ export class LevelActionService {
         return true;
       }
 
-      const blockingArrow = board.getArrows().find(
-        candidate => candidate.getId().value !== arrow.getId().value && candidate.occupies(nextPos),
-      );
+      const blockingArrow = board.getArrows().find(a => a.occupies(nextPos) && a.getId().value !== arrow.getId().value);
       if (blockingArrow) return false;
+
+      if (board.getCellAt(nextPos.row, nextPos.col) instanceof WallCell) return false;
 
       currentPos = nextPos;
     }
   }
 
-  // Calcula la siguiente posición a partir de una dirección dada.
+  // Calcula la siguiente posición al avanzar un paso en la dirección dada.
   private calculateNextPosition(pos: Position, dir: Direction): Position {
-    switch (dir) {
-      case Direction.UP:
-        return new Position(pos.row - 1, pos.col);
-      case Direction.DOWN:
-        return new Position(pos.row + 1, pos.col);
-      case Direction.LEFT:
-        return new Position(pos.row, pos.col - 1);
-      case Direction.RIGHT:
-        return new Position(pos.row, pos.col + 1);
-      default:
-        throw new Error('Unknown direction');
-    }
+    const { rowStep, colStep } = getStep(dir);
+    return new Position(pos.row + rowStep, pos.col + colStep);
   }
 }

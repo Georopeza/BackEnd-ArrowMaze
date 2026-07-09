@@ -8,28 +8,18 @@ export class Arrow {
     private readonly id: ArrowId,
     private readonly headPosition: Position,
     private readonly direction: Direction,
-    private readonly bodyPositions: Position[],
+    private readonly occupiedPositions: Position[] 
   ) {}
 
-  public getId(): ArrowId {
-    return this.id;
-  }
+  public getId(): ArrowId { return this.id; }
+  public getDirection(): Direction { return this.direction; }
+  public getHead(): Position { return this.headPosition; }
+  
+  // El tablero usa esto para limpiar
+  public getAllPositions(): Position[] { return this.occupiedPositions; }
 
-  public getDirection(): Direction {
-    return this.direction;
-  }
-
-  public getHead(): Position {
-    return this.headPosition;
-  }
-
-  // Devuelve todas las celdas ocupadas por la flecha, incluyendo cabeza y cuerpo.
-  public getAllPositions(): Position[] {
-    return [this.headPosition, ...this.bodyPositions];
-  }
-
-  // Comprueba si una posición concreta pertenece a esta flecha.
+  // El tablero usa esto para verificar colisiones
   public occupies(pos: Position): boolean {
-    return this.getAllPositions().some(position => position.equals(pos));
+    return this.headPosition.equals(pos) || this.occupiedPositions.some(p => p.equals(pos));
   }
 }

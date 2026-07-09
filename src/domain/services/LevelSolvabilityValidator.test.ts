@@ -1,18 +1,8 @@
-import { LevelSolvabilityValidator } from './LevelSolvabilityValidator';
-import { ArrowDefinition } from '../entities/ArrowDefinition';
+import { LevelSolvabilityValidator, StructuredLevelJsonDto } from './LevelSolvabilityValidator';
 import { Direction } from '../value-objects/Direction';
-import { Position } from '../value-objects/Position';
 
 describe('LevelSolvabilityValidator - E2E Solvability Tests', () => {
   let validator: LevelSolvabilityValidator;
-
-  const position = (row: number, col: number): Position => new Position(row, col);
-
-  type LevelFixture = {
-    width: number;
-    height: number;
-    arrows: ArrowDefinition[];
-  };
 
   beforeEach(() => {
     validator = new LevelSolvabilityValidator();
@@ -22,103 +12,165 @@ describe('LevelSolvabilityValidator - E2E Solvability Tests', () => {
   // CASO 1: EL ESCENARIO FELIZ (FORMA SIMPLE)
   // ==========================================
   test('should_approve_level_when_arrows_can_exit_without_obstruction', () => {
-    const simpleLevel: LevelFixture = {
+    const simpleLevel: StructuredLevelJsonDto = {
+      id: 'simple-1',
+      levelNumber: 1,
+      difficulty: 'EASY',
+      maxMoves: 5,
+      maxTimeInSeconds: 60,
       width: 4,
       height: 4,
       arrows: [
-        { id: 'f1', direction: Direction.LEFT, head: position(0, 0), body: [position(0, 1)] },
-        { id: 'f2', direction: Direction.RIGHT, head: position(1, 1), body: [position(1, 0)] },
-        { id: 'f3', direction: Direction.DOWN, head: position(1, 2), body: [position(0, 2)] },
-        { id: 'f4', direction: Direction.RIGHT, head: position(0, 3), body: [position(0, 3)] },
-        { id: 'f5', direction: Direction.UP, head: position(1, 3), body: [position(2, 3), position(2, 2)] },
-        { id: 'f6', direction: Direction.UP, head: position(2, 1), body: [position(3, 1), position(4, 1), position(4, 0), position(3, 0), position(2, 0)] },
-        { id: 'f7', direction: Direction.DOWN, head: position(4, 2), body: [position(3, 2), position(3, 3), position(3, 4), position(2, 4), position(1, 4)] },
-        { id: 'f8', direction: Direction.LEFT, head: position(4, 4), body: [position(4, 3)] }
-      ]
+              { id: 'f1', direction: Direction.LEFT, head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] },
+              { id: 'f2', direction: Direction.RIGHT, head: { row: 1, col: 1 }, body: [{ row: 1, col: 0 }] },
+              { id: 'f3', direction: Direction.DOWN, head: { row: 1, col: 2 }, body: [{ row: 0, col: 2 }] },
+              { id: 'f4', direction: Direction.RIGHT, head: { row: 0, col: 3 }, body: [{ row: 0, col: 3 }] },
+              { id: 'f5', direction: Direction.UP, head: { row: 1, col: 3 }, body: [{ row: 2, col: 3 }, { row: 2, col: 2 }] },
+              { id: 'f6', direction: Direction.UP, head: { row: 2, col: 1 }, body: [{ row: 3, col: 1 }, { row: 4, col: 1 }, { row: 4, col: 0 }, { row: 3, col: 0}, { row: 2, col: 0 }] },
+              { id: 'f7', direction: Direction.DOWN, head: { row: 4, col: 2 }, body: [{ row: 3, col: 2 }, { row: 3, col: 3 }, { row: 3, col: 4 }, { row: 2, col: 4 }, { row: 1, col: 4 }] },
+              { id: 'f8', direction: Direction.LEFT, head: { row: 4, col: 4 }, body: [{ row: 4, col: 3 }] }
+            ]
     };
-
-    expect(validator.isPlayable(simpleLevel.width, simpleLevel.height, simpleLevel.arrows)).toBe(true);
+    expect(validator.isPlayable(simpleLevel)).toBe(true);
   });
 
   // ==========================================
   // CASO 2: BLOQUEO DIRECTO (DOS FLECHAS MIRÁNDOSE)
   // ==========================================
   test('should_reject_level_when_two_arrows_point_directly_at_each_other', () => {
-    const faceToFaceLevel: LevelFixture = {
+    const faceToFaceLevel: StructuredLevelJsonDto = {
+      id: 'blocked-face-to-face',
+      levelNumber: 2,
+      difficulty: 'EASY',
+      maxMoves: 5,
+      maxTimeInSeconds: 30,
       width: 5,
       height: 5,
       arrows: [
         {
           id: 'arrow-left',
-          direction: Direction.RIGHT,
-          head: position(2, 1),
-          body: [position(2, 0)]
+          direction: Direction.RIGHT, // Apunta a la derecha hacia la col 3
+          head: { row: 2, col: 1 },
+          body: [{ row: 2, col: 0 }]
         },
         {
           id: 'arrow-right',
-          direction: Direction.LEFT,
-          head: position(2, 3),
-          body: [position(2, 4)]
+          direction: Direction.LEFT,  // Apunta a la izquierda hacia la col 1
+          head: { row: 2, col: 3 },
+          body: [{ row: 2, col: 4 }]
         }
       ]
     };
 
-    expect(validator.isPlayable(faceToFaceLevel.width, faceToFaceLevel.height, faceToFaceLevel.arrows)).toBe(false);
+    // Al mirarse de frente, ninguna puede iniciar el movimiento. Bloqueo inmediato.
+    expect(validator.isPlayable(faceToFaceLevel)).toBe(false);
   });
 
   // ==========================================
   // CASO 3: EL DESBLOQUEO EN CADENA (CON CUERPOS COMPUESTOS)
   // ==========================================
   test('should_approve_complex_level_where_one_arrow_clears_the_path_for_the_rest', () => {
-    const chainLevel: LevelFixture = {
+    const chainLevel: StructuredLevelJsonDto = {
+      id: 'complex-chain-solvable',
+      levelNumber: 3,
+      difficulty: 'MEDIUM',
+      maxMoves: 10,
+      maxTimeInSeconds: 90,
       width: 6,
       height: 6,
       arrows: [
         {
           id: 'arrow-trapped-A',
           direction: Direction.DOWN,
-          head: position(1, 2),
-          body: [position(0, 2)]
+          head: { row: 1, col: 2 }, // Quiere bajar, pero la fila 3 está ocupada por el cuerpo de B
+          body: [{ row: 0, col: 2 }]
         },
         {
           id: 'arrow-free-B',
           direction: Direction.RIGHT,
-          head: position(3, 4),
+          head: { row: 3, col: 4 }, // Su cabeza apunta al borde derecho libre (col 5 está libre)
           body: [
-            position(3, 3),
-            position(3, 2),
-            position(3, 1)
+            { row: 3, col: 3 },
+            { row: 3, col: 2 }, // Este es el trozo de cuerpo que bloqueaba el paso de la flecha A
+            { row: 3, col: 1 }
           ]
         }
       ]
     };
 
-    expect(validator.isPlayable(chainLevel.width, chainLevel.height, chainLevel.arrows)).toBe(true);
+    // El algoritmo simulará que dispara primero la flecha B (hacia la derecha). 
+    // Al remover a B, la coordenada (3,2) queda libre, permitiendo que en la siguiente iteración A pueda bajar con éxito.
+    expect(validator.isPlayable(chainLevel)).toBe(true);
   });
 
   // ==========================================
-  // CASO 4: EL BLOQUEO COMPLEJO EN "U" (ESCENARIO 3)
+  // CASO 4: EL BLOQUEO COMPLEJO EN "L" (ESCENARIO 3)
   // ==========================================
   test('should_reject_level_with_an_unsolvable_interlocking_L_shape', () => {
-    const LBlockedLevel: LevelFixture = {
+    const LBlockedLevel: StructuredLevelJsonDto = {
+      id: 'blocked-l-shape',
+      levelNumber: 4,
+      difficulty: 'HARD',
+      maxMoves: 5,
+      maxTimeInSeconds: 45,
       width: 4,
       height: 4,
       arrows: [
         {
           id: 'U-arrow-left',
           direction: Direction.LEFT,
-          head: position(1, 1),
-          body: [position(0, 0), position(0, 1), position(0, 2), position(1, 2)]
+          head: { row: 1, col: 1 }, // Intenta salir por la izquierda, pero choca con la cabeza/cuerpo de la vertical en col 0
+          body: [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 },{ row: 1, col: 2 }] // Forma una "U acostada" que bloquea la trayectoria de la flecha vertical,
         },
         {
           id: 'arrow-vert',
           direction: Direction.UP,
-          head: position(1, 0),
-          body: [position(2, 0)]
+          head: { row: 1, col: 0 }, // Intenta salir hacia arriba, pero choca con la trayectoria o cuerpo de la horizontal
+          body: [{ row: 2, col: 0 }]
         }
       ]
     };
 
-    expect(validator.isPlayable(LBlockedLevel.width, LBlockedLevel.height, LBlockedLevel.arrows)).toBe(false);
+    // Ninguna de las dos piezas puede moverse inicialmente. El árbol de backtracking se quedará sin opciones.
+    expect(validator.isPlayable(LBlockedLevel)).toBe(false);
+  });
+
+  // ==========================================
+  // CASO 5: PAREDES BLOQUEANDO LA SALIDA
+  // ==========================================
+  test('should_reject_level_when_a_wall_blocks_the_only_arrow_path', () => {
+    const wallBlockedLevel: StructuredLevelJsonDto = {
+      id: 'wall-blocked',
+      levelNumber: 5,
+      difficulty: 'EASY',
+      maxMoves: 5,
+      maxTimeInSeconds: 30,
+      width: 3,
+      height: 3,
+      arrows: [
+        { id: 'f1', direction: Direction.UP, head: { row: 1, col: 1 }, body: [] },
+      ],
+      walls: [{ row: 0, col: 1 }], // Justo en la trayectoria de salida hacia arriba
+    };
+
+    expect(validator.isPlayable(wallBlockedLevel)).toBe(false);
+  });
+
+  test('should_approve_level_when_walls_exist_but_do_not_obstruct_any_arrow_path', () => {
+    const wallClearLevel: StructuredLevelJsonDto = {
+      id: 'wall-clear',
+      levelNumber: 6,
+      difficulty: 'EASY',
+      maxMoves: 5,
+      maxTimeInSeconds: 30,
+      width: 3,
+      height: 3,
+      arrows: [
+        { id: 'f1', direction: Direction.UP, head: { row: 1, col: 1 }, body: [] },
+      ],
+      walls: [{ row: 2, col: 2 }], // Fuera de la trayectoria de la flecha
+    };
+
+    expect(validator.isPlayable(wallClearLevel)).toBe(true);
   });
 });
