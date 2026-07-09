@@ -4,7 +4,8 @@
 // frontend consume para cargar niveles. Ninguno de los dos lados debe
 // duplicar esta forma: el backend lo traduce a `LevelDefinition` (ver
 // `src/infrastructure/mappers/LevelJsonMapper.ts`) y el frontend lo
-// traduce a sus propias entidades desde `lib/interface_adapters`.
+// traduce a sus propias entidades desde `lib/interface_adapters/level_dto_mapper.dart`,
+// usando el espejo Dart en `Arrow-Maze-Escape-Puzzle/lib/contract/level_contract.dart`.
 
 /** Dificultad de un nivel, en inglés para coincidir con ambos dominios. */
 export type LevelDifficultyDto = 'EASY' | 'MEDIUM' | 'HARD' | 'EXPERT';
