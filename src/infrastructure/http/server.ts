@@ -19,10 +19,17 @@ import openapiDocument from './openapi/openapi.json';
 /** Opciones de arranque del servidor (útiles en tests vs producción). */
 export interface CreateServerOptions {
   /**
-   * Si es `true`, inserta [LEVEL_SEED_CATALOG] en el repositorio in-memory
-   * antes de registrar rutas. Por defecto `false` para no alterar tests.
+   * Si es `true`, inserta [LEVEL_SEED_CATALOG] en el repositorio antes de
+   * registrar rutas. Por defecto `false` para no alterar tests.
    */
   seedLevels?: boolean;
+
+  /**
+   * Ruta del archivo SQLite. Por defecto `:memory:` (base efímera y aislada,
+   * el valor correcto para tests). `main.ts` pasa una ruta de archivo real
+   * para que los datos sobrevivan reinicios del proceso.
+   */
+  dbPath?: string;
 }
 
 /**
@@ -40,7 +47,7 @@ export async function createServer(
   jwtSecret: string = process.env.JWT_SECRET ?? 'test-secret',
   options: CreateServerOptions = {},
 ): Promise<Express> {
-  const container = createContainer(jwtSecret);
+  const container = createContainer(jwtSecret, options.dbPath);
 
   if (options.seedLevels) {
     const result = await seedLevelCatalog(container);

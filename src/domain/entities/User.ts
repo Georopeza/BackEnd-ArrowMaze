@@ -22,4 +22,21 @@ export class User {
   public async verifyPassword(password: string, hasher: IPasswordHasher): Promise<boolean> {
     return await hasher.compare(password, this.passwordHash);
   }
+
+  // Accesor explícito para que la capa de infraestructura pueda persistir y
+  // reconstruir la entidad (p. ej. una fila SQLite). Distinto de exponer el
+  // hash para comparación: aquí no se compara nada, solo se serializa.
+  public toPersistenceRecord(): {
+    id: string;
+    username: string;
+    passwordHash: string;
+    createdAt: Date;
+  } {
+    return {
+      id: this.id,
+      username: this.username,
+      passwordHash: this.passwordHash,
+      createdAt: this.createdAt,
+    };
+  }
 }
