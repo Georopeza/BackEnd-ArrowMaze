@@ -1,112 +1,75 @@
 import { StructuredLevelJsonDto } from '../../../../docs/contract/level.contract';
+import { SEED_LEVELS_01_TO_05 } from './catalogEntries/seedLevels01to05';
+import { SEED_LEVELS_06_TO_10 } from './catalogEntries/seedLevels06to10';
+import { SEED_LEVELS_11_TO_15 } from './catalogEntries/seedLevels11to15';
 
 /**
- * Catálogo inicial de niveles en formato wire (`StructuredLevelJsonDto`).
+ * Número total de niveles que el bootstrap inserta al arrancar el servidor.
  *
- * Fuente compartida con el frontend (`docs/levels/simple-1.json` para
- * `simple-1`). Cada entrada debe ser jugable según `LevelSolvabilityValidator`.
- * Se inserta al arrancar el servidor vía [seedLevelCatalog].
+ * Usado en tests de integración para verificar `GET /levels` sin duplicar
+ * la longitud del array en varios archivos.
+ */
+export const LEVEL_SEED_CATALOG_SIZE = 15;
+
+/**
+ * Catálogo completo de niveles en formato wire (`StructuredLevelJsonDto`).
+ *
+ * Fuente compartida con el frontend (`docs/levels/simple-1.json` para el
+ * nivel 1). Cada entrada debe ser jugable según `LevelSolvabilityValidator`
+ * antes de mergear (ver `levelSeedCatalog.spec.ts`).
+ *
+ * Se inserta al arrancar el servidor vía [seedLevelCatalog] cuando
+ * `createServer(..., { seedLevels: true })`.
  */
 export const LEVEL_SEED_CATALOG: StructuredLevelJsonDto[] = [
-  {
-    id: 'simple-1',
-    levelNumber: 1,
-    difficulty: 'EASY',
-    maxMoves: 20,
-    maxTimeInSeconds: 120,
-    width: 5,
-    height: 5,
-    exit: { row: 0, col: 4 },
-    arrows: [
-      { id: 'f1', direction: 'LEFT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] },
-      { id: 'f2', direction: 'RIGHT', head: { row: 1, col: 1 }, body: [{ row: 1, col: 0 }] },
-      { id: 'f3', direction: 'DOWN', head: { row: 1, col: 2 }, body: [{ row: 0, col: 2 }] },
-      { id: 'f4', direction: 'RIGHT', head: { row: 0, col: 3 }, body: [] },
-      {
-        id: 'f5',
-        direction: 'UP',
-        head: { row: 1, col: 3 },
-        body: [
-          { row: 2, col: 3 },
-          { row: 2, col: 2 },
-        ],
-      },
-      {
-        id: 'f6',
-        direction: 'UP',
-        head: { row: 2, col: 1 },
-        body: [
-          { row: 3, col: 1 },
-          { row: 4, col: 1 },
-          { row: 4, col: 0 },
-          { row: 3, col: 0 },
-          { row: 2, col: 0 },
-        ],
-      },
-      {
-        id: 'f7',
-        direction: 'DOWN',
-        head: { row: 4, col: 2 },
-        body: [
-          { row: 3, col: 2 },
-          { row: 3, col: 3 },
-          { row: 3, col: 4 },
-          { row: 2, col: 4 },
-          { row: 1, col: 4 },
-        ],
-      },
-      { id: 'f8', direction: 'LEFT', head: { row: 4, col: 4 }, body: [{ row: 4, col: 3 }] },
-    ],
-  },
-  {
-    id: 'level-02',
-    levelNumber: 2,
-    difficulty: 'EASY',
-    maxMoves: 5,
-    maxTimeInSeconds: 90,
-    width: 2,
-    height: 1,
-    exit: { row: 0, col: 1 },
-    arrows: [{ id: 'a1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] }],
-  },
-  {
-    id: 'level-03',
-    levelNumber: 3,
-    difficulty: 'MEDIUM',
-    maxMoves: 8,
-    maxTimeInSeconds: 90,
-    width: 3,
-    height: 3,
-    exit: { row: 0, col: 2 },
-    arrows: [
-      { id: 'b1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] },
-      { id: 'b2', direction: 'DOWN', head: { row: 1, col: 1 }, body: [] },
-    ],
-  },
-  {
-    id: 'level-04',
-    levelNumber: 4,
-    difficulty: 'MEDIUM',
-    maxMoves: 10,
-    maxTimeInSeconds: 120,
-    width: 3,
-    height: 3,
-    exit: { row: 2, col: 2 },
-    walls: [{ row: 1, col: 0 }],
-    arrows: [
-      { id: 'c1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] },
-      { id: 'c2', direction: 'UP', head: { row: 2, col: 1 }, body: [] },
-    ],
-  },
-  {
-    id: 'level-05',
-    levelNumber: 5,
-    difficulty: 'HARD',
-    maxMoves: 6,
-    maxTimeInSeconds: 120,
-    width: 2,
-    height: 1,
-    exit: { row: 0, col: 1 },
-    arrows: [{ id: 'd1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] }],
-  },
+  ...SEED_LEVELS_01_TO_05,
+  ...SEED_LEVELS_06_TO_10,
+  ...SEED_LEVELS_11_TO_15,
 ];
+
+/**
+ * Devuelve el catálogo ordenado por `levelNumber` ascendente.
+ *
+ * Útil para documentación o herramientas que requieran progresión lineal;
+ * el orden del array fuente ya es 1…15, pero esta función garantiza la
+ * invariante tras futuras ediciones del catálogo.
+ */
+export function getOrderedSeedCatalog(): StructuredLevelJsonDto[] {
+  return [...LEVEL_SEED_CATALOG].sort((a, b) => a.levelNumber - b.levelNumber);
+}
+
+/**
+ * Valida invariantes estructurales del catálogo (sin reglas de solvabilidad).
+ *
+ * Comprueba ids únicos, `levelNumber` únicos y coherencia mínima de campos.
+ * La jugabilidad se valida en tests con `LevelSolvabilityValidator`.
+ *
+ * @throws Error si el catálogo viola alguna invariante.
+ */
+export function assertSeedCatalogInvariants(catalog: StructuredLevelJsonDto[] = LEVEL_SEED_CATALOG): void {
+  const ids = new Set<string>();
+  const levelNumbers = new Set<number>();
+
+  for (const level of catalog) {
+    if (ids.has(level.id)) {
+      throw new Error(`Duplicate seed level id: ${level.id}`);
+    }
+    ids.add(level.id);
+
+    if (levelNumbers.has(level.levelNumber)) {
+      throw new Error(`Duplicate seed levelNumber: ${level.levelNumber}`);
+    }
+    levelNumbers.add(level.levelNumber);
+
+    if (level.width < 1 || level.height < 1) {
+      throw new Error(`Level ${level.id}: invalid board dimensions`);
+    }
+
+    if (level.maxMoves < 1) {
+      throw new Error(`Level ${level.id}: maxMoves must be positive`);
+    }
+  }
+}
+
+// Falla rápido al importar el módulo si el catálogo tiene ids duplicados.
+assertSeedCatalogInvariants();

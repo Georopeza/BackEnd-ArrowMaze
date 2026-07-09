@@ -1,5 +1,15 @@
 import { AppContainer } from '../../http/container';
-import { LEVEL_SEED_CATALOG } from './levelSeedCatalog';
+import { LEVEL_SEED_CATALOG, LEVEL_SEED_CATALOG_SIZE } from './levelSeedCatalog';
+
+/**
+ * Resultado detallado de una ejecución de seed del catálogo de niveles.
+ */
+export interface SeedLevelCatalogResult {
+  /** Cantidad de niveles insertados o actualizados correctamente. */
+  seeded: number;
+  /** Total esperado según [LEVEL_SEED_CATALOG]. */
+  expected: number;
+}
 
 /**
  * Inserta el catálogo inicial de niveles en el repositorio in-memory.
@@ -9,9 +19,10 @@ import { LEVEL_SEED_CATALOG } from './levelSeedCatalog';
  * Idempotente: volver a ejecutar sobre el mismo proceso sobrescribe por `id`.
  *
  * @param container Composition root ya construido (mismas instancias que HTTP).
- * @returns Cantidad de niveles procesados correctamente.
+ * @returns Resumen con cantidad sembrada y total esperado.
+ * @throws Propaga errores de dominio (p. ej. nivel no resoluble) para fallar el bootstrap.
  */
-export async function seedLevelCatalog(container: AppContainer): Promise<number> {
+export async function seedLevelCatalog(container: AppContainer): Promise<SeedLevelCatalogResult> {
   let seeded = 0;
 
   for (const levelDto of LEVEL_SEED_CATALOG) {
@@ -19,5 +30,8 @@ export async function seedLevelCatalog(container: AppContainer): Promise<number>
     seeded += 1;
   }
 
-  return seeded;
+  return {
+    seeded,
+    expected: LEVEL_SEED_CATALOG_SIZE,
+  };
 }

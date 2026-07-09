@@ -42,7 +42,9 @@ export async function createServer(
   const container = createContainer(jwtSecret);
 
   if (options.seedLevels) {
-    await seedLevelCatalog(container);
+    const result = await seedLevelCatalog(container);
+    // eslint-disable-next-line no-console
+    console.log(`Level seed: ${result.seeded}/${result.expected} niveles cargados`);
   }
 
   const authMiddleware = createAuthMiddleware(container.tokenService);

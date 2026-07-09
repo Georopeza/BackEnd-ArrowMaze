@@ -398,3 +398,59 @@ export async function createServer(
 - Pendiente Día 2 frontend: `RemoteLevelRepository` consumiendo `GET /levels` ya poblado.
 
 ---
+
+## Consulta #9 — Ampliación del catálogo seed a 15 niveles (Día 3 backend)
+
+**Tarea o problema abordado.**
+
+Completar el primer entregable del **Día 3** del plan de integración: garantizar que el backend arranque con un catálogo **jugable y suficiente** (15 niveles en `StructuredLevelJsonDto`) para alimentar `GET /levels` y la app Flutter vía `RemoteLevelRepository`, sin intervención manual (`PUT`).
+
+**Herramienta de IA utilizada.**
+
+- Cursor AI (asistente integrado en el IDE).
+
+**Prompt o instrucción proporcionada.**
+
+> Extender el seed del backend (`BackEnd-ArrowMaze`, rama `develop`) de 5 a 15 niveles wire-format validables por `LevelSolvabilityValidator` y `UpsertLevelUseCase`; modularizar el catálogo, añadir tests de invariantes/solvabilidad, documentar cada módulo con TSDoc en español y registrar la consulta en `AI_USAGE.md` con redacción técnica.
+
+**Resultado obtenido.**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Bloque 1–5 | `seed/catalogEntries/seedLevels01to05.ts` | Niveles existentes + `simple-1` canónico |
+| Bloque 6–10 | `seed/catalogEntries/seedLevels06to10.ts` | Tutorial vertical/horizontal, paralelo, cadena |
+| Bloque 11–15 | `seed/catalogEntries/seedLevels11to15.ts` | Muros, cuerpos, EXPERT con desbloqueo en cadena |
+| Ensamblador | `levelSeedCatalog.ts` | `LEVEL_SEED_CATALOG`, `LEVEL_SEED_CATALOG_SIZE = 15`, `assertSeedCatalogInvariants()` |
+| Orquestador | `seedLevelCatalog.ts` | Retorna `SeedLevelCatalogResult { seeded, expected }` |
+| Bootstrap | `server.ts` / `main.ts` | Log `Level seed: 15/15 niveles cargados` |
+| Tests unitarios | `tests/unit/infrastructure/levelSeedCatalog.spec.ts` | Solvabilidad por nivel + ids únicos |
+| Tests integración | `tests/integration/seed.spec.ts` | `GET /levels` devuelve 15 entradas incl. `level-15` |
+
+**Progresión de dificultad.**
+
+| Rango | IDs | Dificultad predominante |
+|-------|-----|-------------------------|
+| 1–5 | `simple-1` … `level-05` | EASY → HARD (existentes) |
+| 6–10 | `level-06` … `level-10` | EASY → MEDIUM |
+| 11–15 | `level-11` … `level-15` | MEDIUM → EXPERT |
+
+**Verificación local.**
+
+```bash
+cd BackEnd-ArrowMaze
+npm run lint && npm test
+npm run dev
+curl http://localhost:3000/levels | jq length   # debe ser 15
+```
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- (Pendiente de revisión tras merge.)
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Cada nivel nuevo debe pasar `levelSeedCatalog.spec.ts` antes del merge; un layout “intuitivo” puede ser irresoluble según el backtracking del validador.
+- `maxMoves` del seed debe ser holgado respecto a la ruta óptima del frontend (`LevelDtoMapper` rechaza `optimalMoves > maxMoves`).
+- Siguiente paso Día 3: prueba E2E manual Flutter + backend (`fallbackToAssets: false`) con los 15 niveles.
+
+---
