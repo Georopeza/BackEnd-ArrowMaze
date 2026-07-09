@@ -59,11 +59,12 @@ export class LevelJsonMapper {
       builder.addCell(wall.row, wall.col, this.cellFactory.createCell('WallCell'));
     }
 
-    builder.addCell(dto.exit.row, dto.exit.col, this.cellFactory.createCell('ExitCell'));
-
     for (const arrow of dto.arrows) {
       builder.addArrow(arrow.head.row, arrow.head.col, arrow.direction as Direction, arrow.id, arrow.body ?? []);
     }
+
+    // La salida se aplica al final para que cabezas/cuerpos de flecha no la sobrescriban.
+    builder.addCell(dto.exit.row, dto.exit.col, this.cellFactory.createCell('ExitCell'));
 
     return builder.build();
   }

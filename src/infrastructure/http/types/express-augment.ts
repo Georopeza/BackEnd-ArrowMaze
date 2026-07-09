@@ -1,8 +1,8 @@
-import { TokenPayload } from '../../../application/ports/ITokenService';
+import type { TokenPayload } from '../../../application/ports/ITokenService';
 
 /**
- * Extensión de tipos de Express para adjuntar el usuario autenticado
- * tras validar el JWT en `authMiddleware`.
+ * Ampliación de tipos de Express para adjuntar el usuario autenticado
+ * tras validar el JWT en `auth.middleware`.
  */
 declare global {
   namespace Express {

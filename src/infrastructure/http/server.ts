@@ -3,6 +3,7 @@ import express, { Express } from 'express';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 
+import './types/express-augment';
 import { healthRouter } from './routes/health.routes';
 import { createAuthRouter } from './routes/auth.routes';
 import { createProgressRouter } from './routes/progress.routes';
