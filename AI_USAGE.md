@@ -550,3 +550,39 @@ builder.addCell(dto.exit.row, dto.exit.col, this.cellFactory.createCell('ExitCel
 - Siguiente paso del plan (Día 4): autenticación en la app y `POST /progress/sync` al completar un nivel.
 
 ---
+
+## Consulta #12 — Reconciliación de `main` y `develop` antes de fusionar (PR hacia `main`)
+
+**Tarea o problema abordado.**
+
+Al abrir el Pull Request de `develop` hacia `main` para consolidar todo el trabajo del proyecto (`gh pr create ... --base main --head develop`), GitHub lo marcó como `CONFLICTING`: `main` tenía 1 commit propio (`b0f81e9`, "agregar validación de tablero, solvabilidad y lógica de scoring para niveles") que nunca se integró a `develop`, resultado de una fusión manual antigua de este repositorio (documentada como recurrente en Tareas 5-7 de este mismo archivo). Había que reconciliar ambas ramas sin perder trabajo real ni reintroducir el tipo de corrupción de merge ya sufrido antes.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Claude Opus 4.8, agente con acceso a terminal, en modo autónomo tras autorización explícita del equipo (sesión nocturna sin supervisión directa).
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ok, fusionemos las ramas. [...] Te voy a dejar en modo automático, ¿crees que puedas hacer esto que resta por tu cuenta sin comprometer la integridad del repositorio? De hacer commit y push a las ramas. Tengo sueño y necesito dormir.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+- Diagnóstico: 4 archivos con conflicto real de Git (`Board.ts`, `BoardRenderer.ts`, `LevelActionService.ts`, `LevelSolvabilityValidator.ts`) — confirmado, comparando tamaños y contenido, que la versión de `develop` era estrictamente más evolucionada en los cuatro (p. ej. `LevelActionService` en `develop` ya usa el helper compartido `getStep()` en vez de duplicar el switch de dirección, exactamente la convención documentada en este mismo repo).
+- Al fusionar `origin/main` en una rama de prueba primero (`tmp-merge-check`), tras resolver los 4 conflictos a favor de `develop`, el build (`tsc`) siguió fallando: aparecieron 5 archivos **huérfanos** que solo existían en `main` (`Level.ts`, `LevelFactory.ts`, y 3 archivos de `services/scoring/`) — un aggregate y una estrategia de scoring paralelos, ya superados por `LevelDefinition.ts`/`LevelBuilder` en `develop`, sin ningún archivo fuera del propio clúster que los referenciara (verificado con `grep` antes de borrar). Se eliminaron los 5.
+- **Hallazgo más importante**: `Arrow.ts` (la entidad, no un test) se fusionó *sin marcarse como conflicto* pero terminó con el contenido de `main`, no el de `develop` — un caso de fusión silenciosa incorrecta que `git merge` no señala como error. Las dos versiones tienen semántica distinta (`getAllPositions()` en `main` devuelve cabeza+cuerpo combinados; en `develop`, solo las celdas de cuerpo, con `occupies()` verificando la cabeza aparte), y el resto del dominio (`Board`, `CollisionValidator`) está escrito contra la semántica de `develop`. Se forzó `git checkout develop -- Arrow.ts`.
+- Al repetir la reconciliación real sobre `develop` (no solo en la rama de prueba), aparecieron **2 archivos huérfanos adicionales** (`ArrowDefinition.ts`, `LeaderboardService.ts`) que no habían aparecido en la prueba anterior — mismo patrón, mismo criterio de eliminación tras verificar ausencia de referencias externas.
+- Se construyó una auditoría sistemática (no solo revisión manual) para detectar más casos de "fusión silenciosa incorrecta": por cada archivo que `main` modificó desde el ancestro común y que también existe en `develop`, comparar el contenido resultante contra `develop` (ignorando fin de línea) y señalar cualquier discrepancia real. Confirmó que, tras las correcciones, ningún otro archivo quedó contaminado.
+- Verificación final sobre `develop`: `npm run build` sin errores, `npm run lint` sin errores, `npm test` con **127/127 tests en verde** (31 suites), igual que antes de la reconciliación.
+
+**Modificaciones realizadas por el equipo al resultado de la IA:**
+
+- El equipo autorizó explícitamente automatizar el resto de la tarea (commit + push) antes de desconectarse, con la condición explícita de "no comprometer la integridad del repositorio".
+- Un intento previo de fusionar directamente hacia `main` con `git push` fue bloqueado automáticamente por el clasificador de permisos del agente (acción de alto riesgo — push directo a la rama por defecto sin revisión); el equipo, consultado, prefirió abrir Pull Requests en vez de push directo tanto para el backend como para el frontend, y el agente respetó ese límite incluso en modo automático: la reconciliación se aplicó y pusheó a `develop` (rama de integración, no protegida), dejando el PR #12 (`develop` → `main`) abierto para revisión humana en vez de fusionarlo automáticamente.
+
+**Lecciones aprendidas o limitaciones identificadas:**
+
+- `git merge` no marca como conflicto un archivo que un solo lado modificó — pero si ese archivo fue reescrito de forma independiente y contradictoria en ambas ramas sin overlap línea a línea (como pasó con `Arrow.ts`, editado en `main` sin que `develop` lo tocara desde el ancestro común, pero con **otro** commit de `develop` reescribiéndolo por completo más tarde de forma no detectada por el 3-way merge), el resultado puede ser semánticamente incorrecto sin que Git lo señale. La única defensa real es auditar explícitamente cada archivo que ambas ramas tocaron, no confiar en "0 conflictos reportados" como sinónimo de "merge correcto".
+- Repetir la reconciliación en una rama de prueba primero (`tmp-merge-check`, descartable) antes de tocar `develop` de verdad permitió detectar y corregir el problema de `Arrow.ts` sin arriesgar la rama real — pero el segundo intento (ahora sí sobre `develop`) reveló *más* archivos huérfanos que la prueba no había mostrado, confirmando que ni siquiera un ensayo previo garantiza cobertura completa; hay que re-auditar cada vez que se repite la operación, no asumir que "ya se probó una vez".
+- El límite de autorización (PRs sí, push directo a `main` no) establecido explícitamente por el equipo en la sesión se respetó incluso en modo automático sin supervisión — la autonomía otorgada ("puedes hacer commit y push a las ramas") no se interpretó como autorización implícita para expandir el alcance a la rama protegida.
+
+---
