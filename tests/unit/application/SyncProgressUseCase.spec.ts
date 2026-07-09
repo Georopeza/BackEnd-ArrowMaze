@@ -8,6 +8,7 @@ import { LevelDefinition } from '../../../src/domain/entities/LevelDefinition';
 function buildProgressRepositoryStub(existing: PlayerProgress | null = null): jest.Mocked<IProgressRepository> {
   return {
     findByUserAndLevel: jest.fn().mockResolvedValue(existing),
+    findAllByUser: jest.fn().mockResolvedValue([]),
     save: jest.fn().mockResolvedValue(undefined),
     getLeaderboardByLevel: jest.fn().mockResolvedValue([]),
   };

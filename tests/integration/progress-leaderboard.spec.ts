@@ -63,4 +63,49 @@ describe('Progress and leaderboard routes', () => {
     expect(response.body).toHaveLength(1);
     expect(response.body[0].highScore).toBe(100);
   });
+
+  it('should_return_401_when_getting_progress_without_jwt', async () => {
+    const app = await createServer('test-secret');
+
+    const response = await request(app).get('/progress');
+
+    expect(response.status).toBe(401);
+  });
+
+  it('should_return_the_authenticated_users_synced_progress', async () => {
+    const app = await createServer('test-secret');
+
+    // Registro + login capturando el userId real que lleva el JWT.
+    await request(app).post('/auth/register').send({ username: 'progress_pull', password: 'super-secret' });
+    const login = await request(app).post('/auth/login').send({ username: 'progress_pull', password: 'super-secret' });
+    const token = login.body.token as string;
+    const userId = login.body.userId as string;
+
+    await request(app).put('/levels/level-1').set(bearerHeader(token)).send(solvableLevelDto);
+    await request(app)
+      .post('/progress/sync')
+      .set(bearerHeader(token))
+      .send({ userId, levelId: 'level-1', score: 250, moves: 2, timeInSeconds: 8, completed: true });
+
+    const response = await request(app).get('/progress').set(bearerHeader(token));
+
+    expect(response.status).toBe(200);
+    expect(response.body.userId).toBe(userId);
+    expect(response.body.levels).toHaveLength(1);
+    expect(response.body.levels[0]).toMatchObject({
+      levelId: 'level-1',
+      highScore: 250,
+      isCompleted: true,
+    });
+  });
+
+  it('should_return_empty_progress_for_a_user_who_has_not_synced_anything', async () => {
+    const app = await createServer('test-secret');
+    const token = await obtainAuthToken(app, 'progress_empty');
+
+    const response = await request(app).get('/progress').set(bearerHeader(token));
+
+    expect(response.status).toBe(200);
+    expect(response.body.levels).toEqual([]);
+  });
 });
