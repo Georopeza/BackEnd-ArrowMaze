@@ -17,10 +17,22 @@ export class JwtTokenService implements ITokenService {
     private readonly expiresIn: string = DEFAULT_EXPIRES_IN,
   ) {}
 
+  /**
+   * Firma un JWT con los claims de sesión (`userId`, `username`).
+   *
+   * @param payload Claims mínimos acordados con el frontend.
+   * @returns Token compacto serializado (header.payload.signature).
+   */
   public generate(payload: TokenPayload): string {
     return jwt.sign(payload, this.secret, { expiresIn: this.expiresIn } as jwt.SignOptions);
   }
 
+  /**
+   * Verifica la firma y expiración del token.
+   *
+   * @param token JWT recibido en `Authorization: Bearer`.
+   * @returns Payload si es válido; `null` si expiró, la firma no coincide o el shape es inválido.
+   */
   public verify(token: string): TokenPayload | null {
     try {
       const decoded = jwt.verify(token, this.secret);

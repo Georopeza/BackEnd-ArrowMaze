@@ -4,6 +4,7 @@ import { InMemoryProgressRepository } from '../persistence/in-memory/InMemoryPro
 import { BcryptPasswordHasher } from '../security/BcryptPasswordHasher';
 import { JwtTokenService } from '../security/JwtTokenService';
 import { LevelJsonMapper } from '../mappers/LevelJsonMapper';
+import { ITokenService } from '../../application/ports/ITokenService';
 
 import { RegisterUserUseCase } from '../../application/use-cases/RegisterUserUseCase';
 import { LoginUserUseCase } from '../../application/use-cases/LoginUserUseCase';
@@ -15,14 +16,12 @@ import { UpsertLevelUseCase } from '../../application/use-cases/UpsertLevelUseCa
 
 /**
  * Composition root de la Capa 3 (Interface Adapters): el único lugar del
- * backend que sabe qué implementaciones concretas (repos en memoria,
- * bcrypt, JWT) satisfacen los puertos que la Capa 2 (Casos de Uso) declara.
- *
- * Las rutas HTTP reciben un `AppContainer` ya construido y solo invocan
- * `execute(...)` sobre los casos de uso — nunca instancian un repositorio
- * o un servicio de infraestructura ellas mismas.
+ * backend que instancia implementaciones concretas (repos in-memory, bcrypt,
+ * JWT) y las inyecta en los casos de uso de la Capa 2.
  */
 export interface AppContainer {
+  /** Emisión y verificación de JWT (login + middleware de autorización). */
+  tokenService: ITokenService;
   registerUser: RegisterUserUseCase;
   loginUser: LoginUserUseCase;
   syncProgress: SyncProgressUseCase;
@@ -32,6 +31,11 @@ export interface AppContainer {
   upsertLevel: UpsertLevelUseCase;
 }
 
+/**
+ * Construye el contenedor de dependencias del servidor HTTP.
+ *
+ * @param jwtSecret Secreto HMAC para firmar tokens (proviene de `JWT_SECRET`).
+ */
 export function createContainer(jwtSecret: string): AppContainer {
   const userRepository = new InMemoryUserRepository();
   const levelRepository = new InMemoryLevelRepository();
@@ -42,6 +46,7 @@ export function createContainer(jwtSecret: string): AppContainer {
   const levelJsonMapper = new LevelJsonMapper();
 
   return {
+    tokenService,
     registerUser: new RegisterUserUseCase(userRepository, passwordHasher),
     loginUser: new LoginUserUseCase(userRepository, passwordHasher, tokenService),
     syncProgress: new SyncProgressUseCase(progressRepository, levelRepository),

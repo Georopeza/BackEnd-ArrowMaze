@@ -10,22 +10,43 @@ import { createLeaderboardRouter } from './routes/leaderboard.routes';
 import { createLevelsRouter } from './routes/levels.routes';
 import { requestLoggerMiddleware } from './middlewares/requestLogger.middleware';
 import { errorHandlerMiddleware } from './middlewares/errorHandler.middleware';
-import { createContainer } from './container';
+import { createAuthMiddleware } from './middlewares/auth.middleware';
+import { AppContainer, createContainer } from './container';
+import { seedLevelCatalog } from '../persistence/seed/seedLevelCatalog';
 import openapiDocument from './openapi/openapi.json';
+
+/** Opciones de arranque del servidor (útiles en tests vs producción). */
+export interface CreateServerOptions {
+  /**
+   * Si es `true`, inserta [LEVEL_SEED_CATALOG] en el repositorio in-memory
+   * antes de registrar rutas. Por defecto `false` para no alterar tests.
+   */
+  seedLevels?: boolean;
+}
 
 /**
  * Crea y configura la aplicación Express (composition root de HTTP).
  *
- * No la inicia (`listen`); eso lo hace `src/main.ts`, para poder importar
- * y probar esta función directamente con supertest sin abrir un puerto.
+ * Aspectos transversales (AOP) registrados aquí:
+ * 1. Logging — `requestLoggerMiddleware`
+ * 2. Errores — `errorHandlerMiddleware`
+ * 3. Autorización JWT — `createAuthMiddleware` en rutas protegidas
  *
- * El `jwtSecret` se recibe por parámetro (en vez de leer `process.env`
- * aquí) para que los tests de integración puedan levantar el servidor con
- * un secreto de prueba sin depender de variables de entorno globales.
+ * @param jwtSecret Secreto para firmar/verificar tokens.
+ * @param options Ver [CreateServerOptions].
  */
-export function createServer(jwtSecret: string = process.env.JWT_SECRET ?? 'test-secret'): Express {
-  const app = express();
+export async function createServer(
+  jwtSecret: string = process.env.JWT_SECRET ?? 'test-secret',
+  options: CreateServerOptions = {},
+): Promise<Express> {
   const container = createContainer(jwtSecret);
+
+  if (options.seedLevels) {
+    await seedLevelCatalog(container);
+  }
+
+  const authMiddleware = createAuthMiddleware(container.tokenService);
+  const app = express();
 
   app.use(helmet());
   app.use(cors());
@@ -35,11 +56,19 @@ export function createServer(jwtSecret: string = process.env.JWT_SECRET ?? 'test
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiDocument));
   app.use(healthRouter);
   app.use(createAuthRouter(container));
-  app.use(createProgressRouter(container));
+  app.use(createProgressRouter(container, authMiddleware));
   app.use(createLeaderboardRouter(container));
-  app.use(createLevelsRouter(container));
+  app.use(createLevelsRouter(container, authMiddleware));
 
   app.use(errorHandlerMiddleware);
 
   return app;
+}
+
+/**
+ * Expone el contenedor para tests que necesitan sembrar datos manualmente
+ * sin levantar HTTP.
+ */
+export function createContainerForTests(jwtSecret = 'test-secret'): AppContainer {
+  return createContainer(jwtSecret);
 }

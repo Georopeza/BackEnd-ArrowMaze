@@ -4,3 +4,4 @@ export * from './InvalidCredentialsError';
 export * from './UserNotFoundError';
 export * from './LevelNotFoundError';
 export * from './LevelNotSolvableError';
+export * from './UnauthorizedError';

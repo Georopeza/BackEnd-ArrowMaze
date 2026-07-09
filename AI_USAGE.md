@@ -335,3 +335,66 @@
   - La principal lección fue la necesidad de revisar la coherencia entre patrones creacionales (Builder) y sus constructores target.
   - Recomendación: usar IA para generar el código inicial y los patrones, pero siempre compilar y validar la coherencia de firmas de funciones.
   - (Tarea 5) Cuando distintas ramas evolucionan el dominio en paralelo, la IA es especialmente útil para el trabajo mecánico de fusión (resolver conflictos, adaptar un mapper a una interfaz que cambió), pero el equipo debe seguir corriendo `build`/`lint`/`test` tras cada fusión en vez de confiar en que cada rama "ya estaba verde" por separado.
+
+---
+
+## Consulta #8 — Backend operativo: seed de catálogo y middleware JWT (Día 2)
+
+**Tarea o problema abordado.**
+
+Completar el segundo bloque crítico del plan de integración (5 días): hacer el backend **operable sin configuración manual** al arrancar y cerrar el **tercer aspecto AOP** (autorización JWT) exigido por la rúbrica académica.
+
+**Herramienta de IA utilizada.**
+
+- Cursor AI (asistente integrado en el IDE).
+
+**Prompt o instrucción proporcionada.**
+
+> Implementar en `BackEnd-ArrowMaze` (rama `develop`): (1) seed idempotente de `StructuredLevelJsonDto` en `InMemoryLevelRepository` al bootstrap; (2) middleware JWT (`Authorization: Bearer`) en rutas mutantes `POST /progress/sync` y `PUT /levels/:id`; (3) documentación dartdoc/TSDoc en español por función; (4) registro en `AI_USAGE.md` con redacción técnica.
+
+**Resultado obtenido.**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Catálogo seed | `src/infrastructure/persistence/seed/levelSeedCatalog.ts` | 5 niveles wire-format (`simple-1` … `level-05`), validables por `UpsertLevelUseCase` |
+| Orquestador seed | `src/infrastructure/persistence/seed/seedLevelCatalog.ts` | Itera catálogo → `upsertLevel.execute()` |
+| Middleware JWT | `src/infrastructure/http/middlewares/auth.middleware.ts` | Extrae Bearer, `ITokenService.verify`, adjunta `req.auth` |
+| Error 401 | `src/application/errors/UnauthorizedError.ts` | Mapeo HTTP vía `errorHandlerMiddleware` |
+| Tipos Express | `src/infrastructure/http/types/express.d.ts` | `Request.auth?: TokenPayload` |
+| Bootstrap | `src/main.ts` | `createServer(jwtSecret, { seedLevels: true })` antes de `listen` |
+| Rutas | `progress.routes.ts`, `levels.routes.ts` | JWT solo en mutaciones; `GET /levels*` público |
+| Tests | `tests/integration/seed.spec.ts`, helpers `authTestHelper.ts` | Seed on/off + Bearer en integración |
+
+**Contrato de arranque (`createServer`).**
+
+```typescript
+export interface CreateServerOptions {
+  seedLevels?: boolean; // default false (tests); true en main.ts
+}
+
+export async function createServer(
+  jwtSecret?: string,
+  options?: CreateServerOptions,
+): Promise<Express>;
+```
+
+**Rutas y seguridad.**
+
+| Método | Ruta | JWT |
+|--------|------|-----|
+| `GET` | `/levels`, `/levels/:id` | No |
+| `PUT` | `/levels/:id` | Sí |
+| `POST` | `/progress/sync` | Sí |
+| `POST` | `/auth/register`, `/auth/login` | No |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- (Pendiente de revisión tras merge.)
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- `createServer` pasó a **async** para garantizar seed completo antes de aceptar tráfico; los tests de integración deben `await createServer(...)`.
+- El seed reutiliza `UpsertLevelUseCase` (misma validación de solvabilidad que `PUT` manual); niveles del catálogo deben pasar `LevelSolvabilityValidator`.
+- Pendiente Día 2 frontend: `RemoteLevelRepository` consumiendo `GET /levels` ya poblado.
+
+---

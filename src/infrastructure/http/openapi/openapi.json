@@ -2,8 +2,18 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Arrow Maze API",
-    "version": "0.2.0",
-    "description": "API REST para Arrow Maze: autenticación, progreso, leaderboard y niveles."
+    "version": "0.3.0",
+    "description": "API REST para Arrow Maze: autenticación JWT, catálogo de niveles con seed, progreso y leaderboard."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token emitido por POST /auth/login"
+      }
+    }
   },
   "paths": {
     "/health": {
@@ -79,6 +89,7 @@
     "/progress/sync": {
       "post": {
         "summary": "Sincroniza el progreso de un jugador en un nivel",
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -101,6 +112,7 @@
         "responses": {
           "200": { "description": "Progreso sincronizado" },
           "400": { "description": "Body inválido" },
+          "401": { "description": "JWT ausente o inválido" },
           "404": { "description": "El nivel no existe" }
         }
       }
@@ -136,9 +148,11 @@
       },
       "put": {
         "summary": "Crea o actualiza la definición de un nivel",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": {
           "200": { "description": "Nivel guardado" },
+          "401": { "description": "JWT ausente o inválido" },
           "422": { "description": "El nivel no es resoluble" }
         }
       }
