@@ -83,6 +83,235 @@ frontend using the shared `StructuredLevelJsonDto` contract:
 using the existing `LevelBuilder`/`CellFactory`, and validates solvability
 (`LevelSolvabilityValidator`) before a level can be persisted.
 
+### Class Diagram
+
+Main classes across all four layers (color-coded), their relationships
+(inheritance, interface implementation, association/composition), and the
+design patterns applied. Low-level test helpers are omitted for readability.
+Editable source: [`docs/architecture/class-diagram.mmd`](docs/architecture/class-diagram.mmd).
+
+```mermaid
+classDiagram
+    direction TB
+    class Cell { <<abstract>> }
+    class ArrowCell
+    class ArrowBodyCell
+    class WallCell
+    class EmptyCell
+    class ExitCell
+    Cell <|-- ArrowCell
+    Cell <|-- ArrowBodyCell
+    Cell <|-- WallCell
+    Cell <|-- EmptyCell
+    Cell <|-- ExitCell
+
+    class Board {
+        -Cell[][] grid
+        -Arrow[] arrows
+        +addArrow(arrow) void
+        +findArrowAt(position) Arrow
+        +clearPositions(positions) void
+        +removeArrowById(id) void
+        +getCellAt(row, col) Cell
+        +isSolved() bool
+    }
+    class Arrow {
+        +ArrowId id
+        +Position headPosition
+        +Direction direction
+        +Position[] occupiedPositions
+    }
+    Board "1" o-- "0..*" Arrow : arrows
+    Board "1" *-- "many" Cell : grid (walls only)
+
+    class Difficulty {
+        <<enumeration>>
+        EASY
+        MEDIUM
+        HARD
+        EXPERT
+    }
+    class LevelDefinition {
+        +string id
+        +int levelNumber
+        +Difficulty difficulty
+        +Cell[][] board
+        +int maxMoves
+        +int maxTimeInSeconds
+        +calculateScore(strategy, movements, time) int
+    }
+    LevelDefinition "1" *-- "many" Cell : board
+    LevelDefinition --> Difficulty
+    class IScoreStrategy {
+        <<interface>>
+        +calculateScore(movements, time) int
+    }
+    LevelDefinition ..> IScoreStrategy : uses (Strategy)
+
+    class User {
+        -string passwordHash
+        +string id
+        +string username
+        +verifyPassword(password, hasher) bool
+        +toPersistenceRecord() Record
+    }
+    class PlayerProgress {
+        +string id
+        +string userId
+        +string levelId
+        +int highScore
+        +int minMoves
+        +int minTimeInSeconds
+        +bool isCompleted
+        +updateScore(score, moves, time, completed) PlayerProgress
+    }
+    class LeaderBoardEntry {
+        +string username
+        +int highScore
+        +int minMoves
+        +int minTimeInSeconds
+    }
+    class Direction {
+        <<enumeration>>
+        UP
+        DOWN
+        LEFT
+        RIGHT
+    }
+    class Position {
+        +int row
+        +int col
+    }
+
+    class ILevelRepository {
+        <<interface>>
+        +findById(id) LevelDefinition
+        +findByLevelNumber(n) LevelDefinition
+        +listAll() LevelDefinition[]
+        +save(level) void
+        +update(level) void
+    }
+    class IUserRepository {
+        <<interface>>
+        +findById(id) User
+        +findByUsername(username) User
+        +save(user) void
+    }
+    class IProgressRepository {
+        <<interface>>
+        +findByUserAndLevel(userId, levelId) PlayerProgress
+        +findAllByUser(userId) PlayerProgress[]
+        +save(progress) void
+        +getLeaderboardByLevel(levelId, limit) LeaderBoardEntry[]
+    }
+    class IPasswordHasher {
+        <<interface>>
+        +hash(password) string
+        +compare(password, hash) bool
+    }
+    class ITokenService {
+        <<interface>>
+        +sign(payload) string
+        +verify(token) Payload
+    }
+
+    class CellFactory {
+        +register(type, factoryFn) void
+        +createCell(type) Cell
+    }
+    CellFactory ..> Cell : creates (Factory Method)
+    class LevelBuilder {
+        +withId(id) LevelBuilder
+        +withDimensions(h, w) LevelBuilder
+        +addCell(row, col, cell) LevelBuilder
+        +addArrow(row, col, dir, id, body) LevelBuilder
+        +withConstraints(maxMoves, maxTime) LevelBuilder
+        +build() LevelDefinition
+    }
+    LevelBuilder ..> LevelDefinition : builds (Builder)
+    LevelBuilder ..> CellFactory
+
+    class BaseLevelProcessor {
+        <<abstract>>
+        +processAction() void
+        #validateAction()*
+        #executeMovement()*
+    }
+    class FireArrowLevelProcessor
+    BaseLevelProcessor <|-- FireArrowLevelProcessor
+    class LevelSolvabilityValidator {
+        +isPlayable(dto) bool
+        +solve(dto) bool
+    }
+    class LevelActionService { +interactWithCell(board, position) void }
+
+    class RegisterUserUseCase { +execute(dto) User }
+    class LoginUserUseCase { +execute(dto) AuthResult }
+    class SyncProgressUseCase { +execute(dto) ProgressResultDto }
+    class GetPlayerProgressUseCase { +execute(userId) PlayerProgressListDto }
+    class GetLeaderboardUseCase { +execute(query) LeaderBoardEntry[] }
+    class ListLevelsUseCase { +execute() LevelDto[] }
+    class GetLevelUseCase { +execute(id) LevelDto }
+    class UpsertLevelUseCase { +execute(dto) LevelDto }
+
+    RegisterUserUseCase ..> IUserRepository
+    RegisterUserUseCase ..> IPasswordHasher
+    LoginUserUseCase ..> IUserRepository
+    LoginUserUseCase ..> IPasswordHasher
+    LoginUserUseCase ..> ITokenService
+    SyncProgressUseCase ..> IProgressRepository
+    SyncProgressUseCase ..> ILevelRepository
+    SyncProgressUseCase ..> PlayerProgress
+    GetPlayerProgressUseCase ..> IProgressRepository
+    GetLeaderboardUseCase ..> IProgressRepository
+    ListLevelsUseCase ..> ILevelRepository
+    GetLevelUseCase ..> ILevelRepository
+    UpsertLevelUseCase ..> ILevelRepository
+    UpsertLevelUseCase ..> LevelSolvabilityValidator
+
+    class SqliteUserRepository
+    class SqliteLevelRepository
+    class SqliteProgressRepository
+    class BcryptPasswordHasher
+    class JwtTokenService
+    class LevelJsonMapper {
+        +toLevelDefinition(dto) LevelDefinition
+        +toDto(level) StructuredLevelJsonDto
+    }
+
+    IUserRepository <|.. SqliteUserRepository
+    ILevelRepository <|.. SqliteLevelRepository
+    IProgressRepository <|.. SqliteProgressRepository
+    IPasswordHasher <|.. BcryptPasswordHasher
+    ITokenService <|.. JwtTokenService
+    SqliteLevelRepository ..> LevelJsonMapper : uses (Adapter)
+    ListLevelsUseCase ..> LevelJsonMapper
+    UpsertLevelUseCase ..> LevelJsonMapper
+
+    class AppContainer {
+        <<composition root>>
+        +createContainer(jwtSecret, dbPath) AppContainer
+    }
+    AppContainer ..> SqliteUserRepository
+    AppContainer ..> SqliteLevelRepository
+    AppContainer ..> SqliteProgressRepository
+    AppContainer ..> RegisterUserUseCase
+    AppContainer ..> LoginUserUseCase
+    AppContainer ..> SyncProgressUseCase
+    AppContainer ..> GetPlayerProgressUseCase
+    AppContainer ..> GetLeaderboardUseCase
+    AppContainer ..> ListLevelsUseCase
+    AppContainer ..> GetLevelUseCase
+    AppContainer ..> UpsertLevelUseCase
+
+    classDef domain fill:#e8f4ea,stroke:#2e7d32,color:#1b3a1e
+    classDef application fill:#e8eef8,stroke:#1565c0,color:#0d2a4d
+    classDef infrastructure fill:#f8e8ee,stroke:#ad1457,color:#4d0d24
+    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
+    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
+    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure
+```
+
 ## Design Patterns
 
 | Pattern | Category | Where | Why |
