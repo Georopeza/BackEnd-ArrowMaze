@@ -451,6 +451,38 @@ curl http://localhost:3000/levels | jq length   # debe ser 15
 
 - Cada nivel nuevo debe pasar `levelSeedCatalog.spec.ts` antes del merge; un layout “intuitivo” puede ser irresoluble según el backtracking del validador.
 - `maxMoves` del seed debe ser holgado respecto a la ruta óptima del frontend (`LevelDtoMapper` rechaza `optimalMoves > maxMoves`).
-- Siguiente paso Día 3: prueba E2E manual Flutter + backend (`fallbackToAssets: false`) con los 15 niveles.
+- Siguiente paso del plan (Día 4): login/registro + `POST /progress/sync` al ganar.
+
+---
+
+---
+
+## Consulta #10 — Prueba E2E HTTP del catálogo sembrado (Día 3 backend)
+
+**Tarea o problema abordado.**
+
+Complementar el Día 3 con tests de integración HTTP que verifiquen que el catálogo de **15 niveles** sembrado al arrancar es consultable vía API y cumple los campos mínimos del contrato `StructuredLevelJsonDto` que consume Flutter.
+
+**Herramienta de IA utilizada.**
+
+- Cursor AI (asistente integrado en el IDE).
+
+**Prompt o instrucción proporcionada.**
+
+> Añadir suite E2E HTTP en el backend que valide `GET /levels` (15 entradas) y `GET /levels/:id` para cada id del catálogo seed, con aserciones de schema wire-format; documentar en `AI_USAGE.md` con redacción técnica.
+
+**Resultado obtenido.**
+
+| Archivo | Responsabilidad |
+|---------|-----------------|
+| `tests/e2e/catalog-http-playable.spec.ts` | Schema + fetch por id de los 15 niveles |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- (Pendiente de revisión tras merge.)
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Este E2E valida contrato HTTP, no jugabilidad en Flutter; la jugabilidad wire-format se cubre en el repo frontend (`test/e2e/wire_format_playability_e2e_test.dart`).
 
 ---
