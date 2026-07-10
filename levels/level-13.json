@@ -1,0 +1,28 @@
+{
+  "id": "level-13",
+  "name": "El Remolino",
+  "levelNumber": 13,
+  "difficulty": "HARD",
+  "maxMoves": 15,
+  "maxTimeInSeconds": 200,
+  "width": 9,
+  "height": 9,
+  "exit": { "row": 4, "col": 4 },
+  "arrows": [
+    { "id": "sp1", "direction": "LEFT", "head": { "row": 0, "col": 0 }, "body": [{ "row": 0, "col": 1 }, { "row": 0, "col": 2 }, { "row": 0, "col": 3 }, { "row": 0, "col": 4 }, { "row": 0, "col": 5 }, { "row": 0, "col": 6 }, { "row": 0, "col": 7 }, { "row": 0, "col": 8 }] },
+    { "id": "sp2", "direction": "UP", "head": { "row": 1, "col": 8 }, "body": [{ "row": 2, "col": 8 }, { "row": 3, "col": 8 }, { "row": 4, "col": 8 }, { "row": 5, "col": 8 }, { "row": 6, "col": 8 }, { "row": 7, "col": 8 }, { "row": 8, "col": 8 }] },
+    { "id": "sp3", "direction": "RIGHT", "head": { "row": 8, "col": 7 }, "body": [{ "row": 8, "col": 6 }, { "row": 8, "col": 5 }, { "row": 8, "col": 4 }, { "row": 8, "col": 3 }, { "row": 8, "col": 2 }, { "row": 8, "col": 1 }, { "row": 8, "col": 0 }] },
+    { "id": "sp4", "direction": "DOWN", "head": { "row": 7, "col": 0 }, "body": [{ "row": 6, "col": 0 }, { "row": 5, "col": 0 }, { "row": 4, "col": 0 }, { "row": 3, "col": 0 }, { "row": 2, "col": 0 }, { "row": 1, "col": 0 }] },
+    { "id": "sp5", "direction": "LEFT", "head": { "row": 1, "col": 1 }, "body": [{ "row": 1, "col": 2 }, { "row": 1, "col": 3 }, { "row": 1, "col": 4 }, { "row": 1, "col": 5 }, { "row": 1, "col": 6 }, { "row": 1, "col": 7 }] },
+    { "id": "sp6", "direction": "UP", "head": { "row": 2, "col": 7 }, "body": [{ "row": 3, "col": 7 }, { "row": 4, "col": 7 }, { "row": 5, "col": 7 }, { "row": 6, "col": 7 }, { "row": 7, "col": 7 }] },
+    { "id": "sp7", "direction": "RIGHT", "head": { "row": 7, "col": 6 }, "body": [{ "row": 7, "col": 5 }, { "row": 7, "col": 4 }, { "row": 7, "col": 3 }, { "row": 7, "col": 2 }, { "row": 7, "col": 1 }] },
+    { "id": "sp8", "direction": "DOWN", "head": { "row": 6, "col": 1 }, "body": [{ "row": 5, "col": 1 }, { "row": 4, "col": 1 }, { "row": 3, "col": 1 }, { "row": 2, "col": 1 }] },
+    { "id": "sp9", "direction": "LEFT", "head": { "row": 2, "col": 2 }, "body": [{ "row": 2, "col": 3 }, { "row": 2, "col": 4 }, { "row": 2, "col": 5 }, { "row": 2, "col": 6 }] },
+    { "id": "sp10", "direction": "UP", "head": { "row": 3, "col": 6 }, "body": [{ "row": 4, "col": 6 }, { "row": 5, "col": 6 }, { "row": 6, "col": 6 }] },
+    { "id": "sp11", "direction": "RIGHT", "head": { "row": 6, "col": 5 }, "body": [{ "row": 6, "col": 4 }, { "row": 6, "col": 3 }, { "row": 6, "col": 2 }] },
+    { "id": "sp12", "direction": "DOWN", "head": { "row": 5, "col": 2 }, "body": [{ "row": 4, "col": 2 }, { "row": 3, "col": 2 }] },
+    { "id": "sp13", "direction": "LEFT", "head": { "row": 3, "col": 3 }, "body": [{ "row": 3, "col": 4 }, { "row": 3, "col": 5 }] },
+    { "id": "sp14", "direction": "UP", "head": { "row": 4, "col": 5 }, "body": [{ "row": 5, "col": 5 }] },
+    { "id": "sp15", "direction": "RIGHT", "head": { "row": 5, "col": 4 }, "body": [{ "row": 5, "col": 3 }] }
+  ]
+}

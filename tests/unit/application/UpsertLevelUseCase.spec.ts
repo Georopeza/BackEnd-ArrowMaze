@@ -16,25 +16,25 @@ const solvableLevelDto: StructuredLevelJsonDto = {
   difficulty: 'EASY',
   maxMoves: 5,
   maxTimeInSeconds: 60,
-  width: 2,
+  width: 3,
   height: 1,
-  exit: { row: 0, col: 1 },
-  arrows: [{ id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] }],
+  exit: { row: 0, col: 2 },
+  arrows: [{ id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] }],
 };
 
-/** Dos flechas apuntándose de frente en un pasillo de 2 celdas: ninguna puede salir jamás. */
+/** Dos flechas apuntándose de frente en un pasillo: ninguna puede salir jamás. */
 const unsolvableLevelDto: StructuredLevelJsonDto = {
   id: 'level-2',
   levelNumber: 2,
   difficulty: 'EASY',
   maxMoves: 5,
   maxTimeInSeconds: 60,
-  width: 2,
+  width: 4,
   height: 1,
   exit: { row: 0, col: 1 },
   arrows: [
-    { id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] },
-    { id: 'f2', direction: 'LEFT', head: { row: 0, col: 1 }, body: [] },
+    { id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 3 }] },
+    { id: 'f2', direction: 'LEFT', head: { row: 0, col: 1 }, body: [{ row: 0, col: 2 }] },
   ],
 };
 

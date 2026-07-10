@@ -1,7 +1,7 @@
 import {
   validateArrowBodyLengths,
   validateSingleArrowBody,
-  MAX_ARROW_BODY_SEGMENTS,
+  MIN_ARROW_BODY_SEGMENTS,
 } from '../../../src/domain/validators/arrowPlacementValidator';
 import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
 
@@ -20,23 +20,23 @@ describe('arrowPlacementValidator', () => {
         id: 'a1',
         direction: 'RIGHT',
         head: { row: 0, col: 0 },
-        body: [],
+        body: [{ row: 0, col: 1 }],
       },
     ],
   };
 
-  test('should_accept_arrow_with_up_to_two_body_segments', () => {
+  test('should_accept_arrow_with_one_body_segment', () => {
     expect(() =>
       validateSingleArrowBody({
         id: 'a1',
         direction: 'RIGHT',
         head: { row: 0, col: 0 },
-        body: [{ row: 0, col: 1 }, { row: 0, col: 2 }],
+        body: [{ row: 0, col: 1 }],
       }),
     ).not.toThrow();
   });
 
-  test('should_reject_arrow_with_more_than_max_body_segments', () => {
+  test('should_accept_arrow_with_many_body_segments', () => {
     expect(() =>
       validateSingleArrowBody({
         id: 'long',
@@ -46,9 +46,22 @@ describe('arrowPlacementValidator', () => {
           { row: 0, col: 1 },
           { row: 0, col: 2 },
           { row: 0, col: 3 },
+          { row: 0, col: 4 },
+          { row: 0, col: 5 },
         ],
       }),
-    ).toThrow(/maximum allowed is 2/);
+    ).not.toThrow();
+  });
+
+  test('should_reject_arrow_with_no_body_segments', () => {
+    expect(() =>
+      validateSingleArrowBody({
+        id: 'headless',
+        direction: 'RIGHT',
+        head: { row: 0, col: 0 },
+        body: [],
+      }),
+    ).toThrow(/at least 1 body cell/);
   });
 
   test('should_validate_all_arrows_in_level_dto', () => {
@@ -65,11 +78,7 @@ describe('arrowPlacementValidator', () => {
           id: 'bad',
           direction: 'DOWN',
           head: { row: 2, col: 0 },
-          body: [
-            { row: 3, col: 0 },
-            { row: 4, col: 0 },
-            { row: 5, col: 0 },
-          ],
+          body: [],
         },
       ],
     };
@@ -77,7 +86,7 @@ describe('arrowPlacementValidator', () => {
     expect(() => validateArrowBodyLengths(dto)).toThrow(/Arrow "bad"/);
   });
 
-  test('should_expose_max_body_segments_constant_as_two', () => {
-    expect(MAX_ARROW_BODY_SEGMENTS).toBe(2);
+  test('should_expose_min_body_segments_constant_as_one', () => {
+    expect(MIN_ARROW_BODY_SEGMENTS).toBe(1);
   });
 });

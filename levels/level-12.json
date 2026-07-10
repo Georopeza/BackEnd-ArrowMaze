@@ -1,0 +1,23 @@
+{
+  "id": "level-12",
+  "name": "Punto de Quiebre",
+  "levelNumber": 12,
+  "difficulty": "MEDIUM",
+  "maxMoves": 11,
+  "maxTimeInSeconds": 140,
+  "width": 9,
+  "height": 9,
+  "exit": { "row": 4, "col": 4 },
+  "arrows": [
+    { "id": "t1", "direction": "UP", "head": { "row": 0, "col": 0 }, "body": [{ "row": 0, "col": 1 }, { "row": 0, "col": 2 }, { "row": 0, "col": 3 }, { "row": 0, "col": 4 }, { "row": 0, "col": 5 }, { "row": 0, "col": 6 }, { "row": 0, "col": 7 }, { "row": 0, "col": 8 }] },
+    { "id": "t2", "direction": "UP", "head": { "row": 1, "col": 1 }, "body": [{ "row": 1, "col": 2 }, { "row": 1, "col": 3 }, { "row": 1, "col": 4 }, { "row": 1, "col": 5 }, { "row": 1, "col": 6 }, { "row": 1, "col": 7 }] },
+    { "id": "t3", "direction": "UP", "head": { "row": 2, "col": 2 }, "body": [{ "row": 2, "col": 3 }, { "row": 2, "col": 4 }, { "row": 2, "col": 5 }, { "row": 2, "col": 6 }] },
+    { "id": "t4", "direction": "UP", "head": { "row": 3, "col": 3 }, "body": [{ "row": 3, "col": 4 }, { "row": 3, "col": 5 }] },
+    { "id": "s1", "direction": "DOWN", "head": { "row": 8, "col": 0 }, "body": [{ "row": 8, "col": 1 }, { "row": 8, "col": 2 }, { "row": 8, "col": 3 }, { "row": 8, "col": 4 }, { "row": 8, "col": 5 }, { "row": 8, "col": 6 }, { "row": 8, "col": 7 }, { "row": 8, "col": 8 }] },
+    { "id": "s2", "direction": "DOWN", "head": { "row": 7, "col": 1 }, "body": [{ "row": 7, "col": 2 }, { "row": 7, "col": 3 }, { "row": 7, "col": 4 }, { "row": 7, "col": 5 }, { "row": 7, "col": 6 }, { "row": 7, "col": 7 }] },
+    { "id": "s3", "direction": "DOWN", "head": { "row": 6, "col": 2 }, "body": [{ "row": 6, "col": 3 }, { "row": 6, "col": 4 }, { "row": 6, "col": 5 }, { "row": 6, "col": 6 }] },
+    { "id": "s4", "direction": "DOWN", "head": { "row": 5, "col": 3 }, "body": [{ "row": 5, "col": 4 }, { "row": 5, "col": 5 }] },
+    { "id": "w1", "direction": "LEFT", "head": { "row": 4, "col": 0 }, "body": [{ "row": 4, "col": 1 }] },
+    { "id": "w2", "direction": "RIGHT", "head": { "row": 4, "col": 8 }, "body": [{ "row": 4, "col": 7 }] }
+  ]
+}

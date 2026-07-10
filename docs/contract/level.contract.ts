@@ -23,8 +23,9 @@ export type ArrowDirectionDto = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
  * Una flecha del nivel: su celda "cabeza" (la que efectivamente se mueve)
  * y las celdas de "cuerpo" que ocupa además de la cabeza.
  *
- * Máximo 2 segmentos de cuerpo (3 celdas en total incluyendo la cabeza),
- * alineado con el diseño visual del cliente Flutter.
+ * Mínimo 1 segmento de cuerpo (2 celdas en total incluyendo la cabeza): una
+ * celda suelta sin cuerpo no es una flecha jugable. Sin máximo: el cliente
+ * traza la flecha como una polilínea de longitud arbitraria.
  */
 export interface StructuredArrowJsonDto {
   id: string;
@@ -51,4 +52,15 @@ export interface StructuredLevelJsonDto {
   exit: CellPositionDto;
   walls?: CellPositionDto[];
   arrows: StructuredArrowJsonDto[];
+  /**
+   * Cantidad mínima de movimientos para vaciar el tablero jugando perfecto
+   * (usada por el cliente para calificar con estrellas). Siempre igual a
+   * `arrows.length`: cada disparo exitoso retira exactamente una flecha, y
+   * ganar exige retirarlas todas, así que toda secuencia ganadora tiene
+   * exactamente ese largo — no hace falta ninguna búsqueda para calcularlo.
+   *
+   * Calculado y devuelto por el servidor (`LevelJsonMapper.toDto`); un
+   * archivo de nivel autor-escrito no necesita incluirlo, se ignora si viene.
+   */
+  optimalMoves?: number;
 }

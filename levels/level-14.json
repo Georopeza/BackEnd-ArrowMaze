@@ -1,0 +1,27 @@
+{
+  "id": "level-14",
+  "name": "Persianas Cruzadas",
+  "levelNumber": 14,
+  "difficulty": "HARD",
+  "maxMoves": 14,
+  "maxTimeInSeconds": 220,
+  "width": 9,
+  "height": 16,
+  "exit": { "row": 11, "col": 4 },
+  "arrows": [
+    { "id": "cb1", "direction": "UP", "head": { "row": 0, "col": 0 }, "body": [{ "row": 0, "col": 1 }, { "row": 0, "col": 2 }, { "row": 0, "col": 3 }, { "row": 0, "col": 4 }, { "row": 0, "col": 5 }, { "row": 0, "col": 6 }, { "row": 0, "col": 7 }, { "row": 0, "col": 8 }] },
+    { "id": "cb2", "direction": "UP", "head": { "row": 1, "col": 0 }, "body": [{ "row": 1, "col": 1 }, { "row": 1, "col": 2 }, { "row": 1, "col": 3 }, { "row": 1, "col": 4 }, { "row": 1, "col": 5 }, { "row": 1, "col": 6 }, { "row": 1, "col": 7 }, { "row": 1, "col": 8 }] },
+    { "id": "cb3", "direction": "UP", "head": { "row": 2, "col": 0 }, "body": [{ "row": 2, "col": 1 }, { "row": 2, "col": 2 }, { "row": 2, "col": 3 }, { "row": 2, "col": 4 }, { "row": 2, "col": 5 }, { "row": 2, "col": 6 }, { "row": 2, "col": 7 }, { "row": 2, "col": 8 }] },
+    { "id": "cb4", "direction": "UP", "head": { "row": 3, "col": 0 }, "body": [{ "row": 3, "col": 1 }, { "row": 3, "col": 2 }, { "row": 3, "col": 3 }, { "row": 3, "col": 4 }, { "row": 3, "col": 5 }, { "row": 3, "col": 6 }, { "row": 3, "col": 7 }, { "row": 3, "col": 8 }] },
+    { "id": "cb5", "direction": "UP", "head": { "row": 4, "col": 0 }, "body": [{ "row": 4, "col": 1 }, { "row": 4, "col": 2 }, { "row": 4, "col": 3 }, { "row": 4, "col": 4 }, { "row": 4, "col": 5 }, { "row": 4, "col": 6 }, { "row": 4, "col": 7 }, { "row": 4, "col": 8 }] },
+    { "id": "cb6", "direction": "UP", "head": { "row": 5, "col": 0 }, "body": [{ "row": 5, "col": 1 }, { "row": 5, "col": 2 }, { "row": 5, "col": 3 }, { "row": 5, "col": 4 }, { "row": 5, "col": 5 }, { "row": 5, "col": 6 }, { "row": 5, "col": 7 }] },
+    { "id": "xu1", "direction": "UP", "head": { "row": 7, "col": 4 }, "body": [{ "row": 8, "col": 4 }] },
+    { "id": "xu2", "direction": "UP", "head": { "row": 9, "col": 4 }, "body": [{ "row": 10, "col": 4 }] },
+    { "id": "xd1", "direction": "DOWN", "head": { "row": 15, "col": 4 }, "body": [{ "row": 14, "col": 4 }] },
+    { "id": "xd2", "direction": "DOWN", "head": { "row": 13, "col": 4 }, "body": [{ "row": 12, "col": 4 }] },
+    { "id": "xl1", "direction": "LEFT", "head": { "row": 11, "col": 0 }, "body": [{ "row": 11, "col": 1 }] },
+    { "id": "xl2", "direction": "LEFT", "head": { "row": 11, "col": 2 }, "body": [{ "row": 11, "col": 3 }] },
+    { "id": "xr1", "direction": "RIGHT", "head": { "row": 11, "col": 8 }, "body": [{ "row": 11, "col": 7 }] },
+    { "id": "xr2", "direction": "RIGHT", "head": { "row": 11, "col": 6 }, "body": [{ "row": 11, "col": 5 }] }
+  ]
+}

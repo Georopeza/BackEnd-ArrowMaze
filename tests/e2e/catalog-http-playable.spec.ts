@@ -10,7 +10,7 @@ import {
  * que consume el frontend (`StructuredLevelJsonDto`).
  */
 describe('E2E — HTTP catalog playable', () => {
-  it('should_return_15_levels_with_required_wire_fields', async () => {
+  it('should_return_seeded_levels_with_required_wire_fields', async () => {
     const app = await createServer('test-secret', { seedLevels: true });
 
     const response = await request(app).get('/levels');

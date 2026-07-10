@@ -1,0 +1,18 @@
+{
+  "id": "level-3",
+  "name": "El Primer Bloqueo",
+  "levelNumber": 3,
+  "difficulty": "EASY",
+  "maxMoves": 7,
+  "maxTimeInSeconds": 75,
+  "width": 6,
+  "height": 6,
+  "exit": { "row": 5, "col": 5 },
+  "arrows": [
+    { "id": "a1", "direction": "UP", "head": { "row": 0, "col": 2 }, "body": [{ "row": 1, "col": 2 }] },
+    { "id": "a2", "direction": "UP", "head": { "row": 2, "col": 2 }, "body": [{ "row": 3, "col": 2 }] },
+    { "id": "a3", "direction": "DOWN", "head": { "row": 5, "col": 4 }, "body": [{ "row": 4, "col": 4 }] },
+    { "id": "a4", "direction": "LEFT", "head": { "row": 3, "col": 0 }, "body": [{ "row": 3, "col": 1 }] },
+    { "id": "a5", "direction": "RIGHT", "head": { "row": 3, "col": 5 }, "body": [{ "row": 3, "col": 4 }] }
+  ]
+}

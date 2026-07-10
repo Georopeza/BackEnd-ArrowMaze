@@ -1,0 +1,23 @@
+{
+  "id": "level-10",
+  "name": "La Fortaleza",
+  "levelNumber": 10,
+  "difficulty": "MEDIUM",
+  "maxMoves": 11,
+  "maxTimeInSeconds": 140,
+  "width": 7,
+  "height": 7,
+  "exit": { "row": 3, "col": 3 },
+  "arrows": [
+    { "id": "f1", "direction": "UP", "head": { "row": 0, "col": 6 }, "body": [{ "row": 0, "col": 0 }, { "row": 0, "col": 1 }, { "row": 0, "col": 2 }, { "row": 0, "col": 3 }, { "row": 0, "col": 4 }, { "row": 0, "col": 5 }] },
+    { "id": "f2", "direction": "UP", "head": { "row": 1, "col": 6 }, "body": [{ "row": 2, "col": 6 }, { "row": 3, "col": 6 }, { "row": 4, "col": 6 }, { "row": 5, "col": 6 }, { "row": 6, "col": 6 }] },
+    { "id": "f3", "direction": "RIGHT", "head": { "row": 6, "col": 5 }, "body": [{ "row": 6, "col": 4 }, { "row": 6, "col": 3 }, { "row": 6, "col": 2 }, { "row": 6, "col": 1 }, { "row": 6, "col": 0 }] },
+    { "id": "f4", "direction": "DOWN", "head": { "row": 5, "col": 0 }, "body": [{ "row": 4, "col": 0 }, { "row": 3, "col": 0 }, { "row": 2, "col": 0 }, { "row": 1, "col": 0 }] },
+    { "id": "cu", "direction": "UP", "head": { "row": 1, "col": 3 }, "body": [{ "row": 2, "col": 3 }] },
+    { "id": "cd", "direction": "DOWN", "head": { "row": 5, "col": 3 }, "body": [{ "row": 4, "col": 3 }] },
+    { "id": "cl", "direction": "LEFT", "head": { "row": 3, "col": 1 }, "body": [{ "row": 3, "col": 2 }] },
+    { "id": "cr", "direction": "RIGHT", "head": { "row": 3, "col": 5 }, "body": [{ "row": 3, "col": 4 }] },
+    { "id": "g1", "direction": "UP", "head": { "row": 1, "col": 1 }, "body": [{ "row": 2, "col": 1 }] },
+    { "id": "g2", "direction": "DOWN", "head": { "row": 5, "col": 5 }, "body": [{ "row": 4, "col": 5 }] }
+  ]
+}

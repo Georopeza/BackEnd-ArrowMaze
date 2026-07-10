@@ -777,3 +777,40 @@ Alinear el backend con el nuevo diseño visual del cliente: cada flecha puede oc
 
 - Validar en el upsert evita persistir niveles que el cliente no puede dibujar correctamente con el nuevo `ArrowBoardPainter`.
 - Recortar flechas largas puede cambiar la solvabilidad: conviene re-ejecutar tests E2E del catálogo tras editar JSON.
+
+---
+
+## Consulta #18 — Corrección del límite de flechas, `optimalMoves` calculado en el servidor y catálogo de 20 niveles
+
+**Tarea o problema abordado.**
+
+Al probar en vivo con niveles reales se detectaron dos problemas de diseño, no solo de código: (1) el límite de "máximo 3 celdas por flecha" agregado en la Consulta #17 estaba mal — se copió el límite visual del cliente en lugar de corregirlo, y la regla real del juego es "mínimo 1 celda de cuerpo, sin máximo"; (2) el cliente recalculaba `optimalMoves` con un BFS exhaustivo sobre el espacio de estados cada vez que cargaba el catálogo, lo cual congelaba la pestaña con niveles grandes (48 flechas). Se corrigió la regla de validación, se movió el cálculo de `optimalMoves` al backend (matemáticamente siempre `arrows.length`, ya que cada disparo exitoso retira exactamente una flecha), y se reconstruyó el catálogo `levels/` con 20 niveles diseñados manualmente por el equipo (reemplazando los 15 originales, varios de los cuales tenían flechas sin cuerpo y ya no cumplían la regla corregida).
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Claude Sonnet 5), sesión interactiva de terminal con acceso de lectura/escritura al repositorio, ejecución de la suite de tests y control de versiones.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Solucionar que las flechas tengan cualquier longitud (no solo 5) en el frontend; las flechas deben tener al menos una cabeza y una celda de cuerpo. Blindar el servicio ante la subida de niveles corruptos o no resolubles. Más adelante: el cliente congela la pantalla al cargar niveles grandes porque recalcula la ruta óptima — mover ese cálculo al backend ya que el óptimo es siempre igual a la cantidad de flechas.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Validador | `src/domain/validators/arrowPlacementValidator.ts` | `MIN_ARROW_BODY_SEGMENTS = 1`; rechaza flechas sin cuerpo, ya no limita el máximo |
+| Contrato | `docs/contract/level.contract.ts` | `optimalMoves?: number`, documentado como siempre igual a `arrows.length` |
+| Mapper | `src/infrastructure/mappers/LevelJsonMapper.toDto` | Calcula y adjunta `optimalMoves` en cada respuesta de `/levels` |
+| Catálogo | `levels/*.json` | 20 niveles nuevos (`level-1`…`level-20`), diseñados manualmente por el equipo, todos validados (cuerpo mínimo + resolubles) antes de reemplazar el catálogo anterior |
+| Tests BE | `arrowPlacementValidator.spec.ts`, tests de integración de niveles/progreso/SQLite | Actualizados a la regla de mínimo y al catálogo de 20 |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- El equipo diseñó y aportó manualmente los 20 niveles del catálogo (formas de tablero y disposición de flechas); la IA solo los validó (JSON válido, sin BOM, ids únicos, cuerpo mínimo, solubilidad) antes de aceptarlos como reemplazo del catálogo anterior.
+- Se decidió explícitamente mantener el catálogo de `levels/` puramente aditivo (sin mecanismo de borrado automático al quitar un archivo), priorizando no perder progreso/puntajes de jugadores ya asociados a un nivel sobre la conveniencia de limpieza automática.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un límite de validación "copiado" de una limitación de otra capa (el pintor del cliente) en vez de derivado de la regla de negocio real es un error fácil de introducir sin notarlo — solo se detectó al probar con niveles reales de mayor tamaño.
+- El costo de un algoritmo de búsqueda (BFS/backtracking) depende de la estructura del nivel, no solo de la cantidad de flechas: conviene medir con datos reales (se hizo con un script de validación aislado) antes de asumir que "más grande implica más lento".
+- Duplicar una regla de negocio en dos repositorios (cliente y backend) con implementaciones de distinto costo computacional es un riesgo real de arquitectura distribuida; centralizar el cálculo en el lado que ya lo valida (el backend) elimina la duplicación y el riesgo de que diverjan.

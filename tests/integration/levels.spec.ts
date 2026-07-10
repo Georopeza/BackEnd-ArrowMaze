@@ -7,10 +7,10 @@ const solvableLevelDto = {
   difficulty: 'EASY',
   maxMoves: 5,
   maxTimeInSeconds: 60,
-  width: 2,
+  width: 3,
   height: 1,
-  exit: { row: 0, col: 1 },
-  arrows: [{ id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] }],
+  exit: { row: 0, col: 2 },
+  arrows: [{ id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] }],
 };
 
 describe('Levels routes', () => {
@@ -40,9 +40,10 @@ describe('Levels routes', () => {
     const token = await obtainAuthToken(app, 'levels_writer_422');
     const unsolvableLevelDto = {
       ...solvableLevelDto,
+      width: 4,
       arrows: [
-        { id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] },
-        { id: 'f2', direction: 'LEFT', head: { row: 0, col: 1 }, body: [] },
+        { id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 3 }] },
+        { id: 'f2', direction: 'LEFT', head: { row: 0, col: 1 }, body: [{ row: 0, col: 2 }] },
       ],
     };
 

@@ -125,6 +125,9 @@ export class LevelJsonMapper {
       exit,
       walls: walls.length > 0 ? walls : undefined,
       arrows,
+      // Cada disparo exitoso retira exactamente una flecha; ganar exige
+      // retirarlas todas, así que el óptimo es siempre `arrows.length`.
+      optimalMoves: arrows.length,
     };
   }
 }

@@ -16,9 +16,9 @@ describe('loadLevelCatalogFromDirectory', () => {
   it('should_load_all_json_files_from_default_levels_directory', () => {
     const catalog = loadLevelCatalogFromDirectory(DEFAULT_LEVELS_DIRECTORY);
 
-    expect(catalog).toHaveLength(15);
-    expect(catalog.map(level => level.id)).toContain('simple-1');
-    expect(catalog.map(level => level.id)).toContain('level-15');
+    expect(catalog).toHaveLength(22);
+    expect(catalog.map(level => level.id)).toContain('level-1');
+    expect(catalog.map(level => level.id)).toContain('level-22');
   });
 
   it('should_match_LEVEL_SEED_CATALOG_exported_by_levelSeedCatalog', () => {
