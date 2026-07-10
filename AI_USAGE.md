@@ -586,3 +586,79 @@ Al abrir el Pull Request de `develop` hacia `main` para consolidar todo el traba
 - El límite de autorización (PRs sí, push directo a `main` no) establecido explícitamente por el equipo en la sesión se respetó incluso en modo automático sin supervisión — la autonomía otorgada ("puedes hacer commit y push a las ramas") no se interpretó como autorización implícita para expandir el alcance a la rama protegida.
 
 ---
+
+## Consulta #13 — Endpoint `GET /progress` para descarga de progreso del jugador
+
+**Tarea o problema abordado.**
+
+El backend solo exponía `POST /progress/sync` (subir progreso), lo que hacía la sincronización unidireccional: el cliente subía sus victorias pero no había forma de recuperarlas al iniciar sesión desde otro dispositivo o una sesión limpia. El equipo detectó que esto contradice el propósito real del ítem 5.2.2 del enunciado ("sincronizar el progreso del jugador con el servidor") — que el progreso sea del jugador y viva en el servidor, no solo en el dispositivo. Se pidió agregar el endpoint de descarga que cierra el ciclo.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Claude Sonnet 5, agente con acceso a terminal.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+"Sí, impleméntalo, endpoint GET y pull+merge al login [...]" — la parte de backend de una tarea que abarcó ambos repos (el pull+merge del lado cliente se documenta en el `AI_USAGE.md` del repo `Arrow-Maze-Escape-Puzzle`, Consulta #19).
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Puerto | `src/domain/repositories/IProgressRepository.ts` | Nuevo método `findAllByUser(userId)` |
+| Implementación | `src/infrastructure/persistence/in-memory/InMemoryProgressRepository.ts` | Filtra el mapa de progreso por `userId` |
+| Caso de uso | `src/application/use-cases/GetPlayerProgressUseCase.ts` | Devuelve `PlayerProgressListDto` con todos los niveles del usuario |
+| DTO | `src/application/dto/ProgressDtos.ts` | `PlayerProgressListDto` |
+| Ruta | `src/infrastructure/http/routes/progress.routes.ts` | `GET /progress` protegido por JWT; `userId` tomado de `req.auth`, nunca del cliente (un usuario no puede leer el progreso de otro) |
+| Wiring | `src/infrastructure/http/container.ts` | `getPlayerProgress` en el `AppContainer` |
+| Doc | `src/infrastructure/http/openapi/openapi.json` | Schema de respuesta documentado en Swagger |
+| Tests | `tests/unit/application/GetPlayerProgressUseCase.spec.ts` (2), `tests/integration/progress-leaderboard.spec.ts` (+3: 401 sin JWT, devuelve lo sincronizado, vacío para usuario nuevo) | — |
+
+Decisión de seguridad: el `userId` proviene exclusivamente del JWT verificado (`req.auth!.userId`), no de un parámetro de query o path — así el endpoint no puede usarse para leer el progreso de otro usuario. La regla "mejor de ambos" al fusionar vive en el cliente (`PlayerProgress.mergeRemoteLevel`); este endpoint solo expone lo persistido.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna corrección posterior; `npx tsc --noEmit` limpio y suite completa en verde (unitarios + integración) antes de dar por terminado. Se corrigieron los stubs de `IProgressRepository` en los specs existentes (`SyncProgressUseCase`, `GetLeaderboardUseCase`) para incluir el nuevo método `findAllByUser`.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Agregar un método a un puerto (`IProgressRepository`) rompe en tiempo de compilación todos los stubs de test que lo implementan — TypeScript los marca de inmediato, lo que es una ventaja frente a lenguajes más laxos: ningún stub quedó desactualizado silenciosamente.
+- Limitación conocida (heredada del esquema): `PlayerProgress` del backend guarda `highScore/minMoves/minTimeInSeconds/isCompleted` pero no estrellas, así que el pull del cliente no puede restaurar la calificación en estrellas de otro dispositivo. Ampliar el esquema con `stars` sería la mejora natural si se quisiera fidelidad completa.
+
+---
+
+## Consulta #14 — Persistencia real con SQLite (usuarios, niveles y progreso sobreviven reinicios)
+
+**Tarea o problema abordado.**
+
+Al probar la sincronización de progreso entre ventanas/dispositivos, el equipo notó que reiniciar el proceso del backend (`npm run dev`) borraba todos los datos — los tres repositorios (`InMemoryUserRepository`, `InMemoryLevelRepository`, `InMemoryProgressRepository`) vivían solo en RAM, una decisión explícitamente diferida "a un sprint posterior" desde las primeras consultas (ver comentarios originales en esos archivos). Antes de decidir la tecnología, se discutió con el equipo relacional vs. no relacional y local vs. nube; se concluyó que los datos del proyecto son tabulares con consultas de agregación (leaderboard ordenado) — relacional es la elección técnicamente correcta — y que un motor embebido (sin servidor externo que levantar) es preferible a una base gestionada en la nube para una entrega académica con demo local.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Claude Sonnet 5, agente con acceso a terminal.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+"Sí. Enciende el backend" (tras una discusión previa comparando SQLite/NeDB/Postgres/local vs. nube) → "Sí, empieza con SQLite".
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Bootstrap DB | `src/infrastructure/persistence/sqlite/Database.ts` | Abre/crea el archivo `.db` (o `:memory:` en tests), crea el esquema (`users`, `levels`, `progress`) si no existe |
+| Repositorios | `SqliteUserRepository.ts`, `SqliteLevelRepository.ts`, `SqliteProgressRepository.ts` | Implementan los mismos puertos (`IUserRepository`, `ILevelRepository`, `IProgressRepository`) que ya usaban los casos de uso — DIP hizo el reemplazo transparente, cero cambios en dominio/aplicación/rutas |
+| Entidad | `User.toPersistenceRecord()` | Accesor explícito para que infraestructura serialice el hash sin exponerlo para comparación (distinto de `verifyPassword`) |
+| Wiring | `createContainer(jwtSecret, dbPath = ':memory:')`, `createServer(jwtSecret, { dbPath })`, `main.ts` (`DB_PATH` env var, default `data/arrowmaze.db`) | Tests siguen aislados por defecto (`:memory:`); producción persiste a archivo real |
+| Serialización de niveles | `SqliteLevelRepository` reutiliza `LevelJsonMapper` (ya existente) para guardar el `StructuredLevelJsonDto` como JSON en una columna de texto, en vez de modelar `Cell[][]` relacionalmente | Evita sobre-ingeniería: el agregado es demasiado rico para columnas, pero el JSON de transporte ya existe |
+| Limpieza | Se eliminaron `InMemoryUserRepository`, `InMemoryLevelRepository`, `InMemoryProgressRepository` (código muerto tras el reemplazo) | — |
+| Tests nuevos | `tests/integration/sqlite-persistence.spec.ts` (3 casos: usuario, nivel y progreso sobreviven un "reinicio" simulado con dos instancias de `createServer` sobre el mismo archivo) | — |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna corrección posterior; `npx tsc --noEmit` limpio y suite completa en verde (33 suites, 135 tests) tras el cambio. Se verificó también manualmente en vivo: registrar un usuario, matar el proceso (`Stop-Process`), reiniciarlo, y hacer login exitoso con el mismo usuario contra el proceso nuevo.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- En Windows, `better-sqlite3` mantiene el archivo (y sus `.db-wal`/`.db-shm` de modo WAL) abierto con un handle nativo que no se libera de inmediato; el primer intento del test de persistencia fallaba con `EBUSY` al intentar borrar el directorio temporal en `afterEach`, incluso con reintentos de `fs.rmSync`. Como no hay una API pública de `close()` expuesta desde `createServer` (y agregarla infla el alcance de esta tarea), se optó por ignorar deliberadamente el error de limpieza del directorio temporal en el test — no afecta la aserción real (que los datos persistieron), solo la prolijidad del `afterEach`.
+- Gracias al DIP ya aplicado desde el inicio del proyecto, cambiar de "sin persistencia real" a "SQLite" fue un cambio *puramente aditivo* en la capa de infraestructura: cero líneas tocadas en dominio, casos de uso o rutas HTTP — la mejor demostración práctica de por qué se exige ese principio.
+- Decisión documentada explícitamente para la defensa: se eligió SQLite (relacional, embebido) en vez de una base NoSQL o un servicio en la nube porque (a) los datos del proyecto son tabulares con consultas de agregación, y (b) el enunciado solo pide la URL del repositorio como entregable, no un backend desplegado — depender de un servicio en la nube durante la sustentación añadiría un punto de falla innecesario sin exigirlo la rúbrica.

@@ -1,27 +1,25 @@
 flowchart TB
     %% Diagrama de capas - Clean Architecture (backend Arrow Maze).
-    %% Placeholder de Sprint 1: las flechas van de afuera hacia adentro
-    %% (las capas externas dependen de las internas, nunca al reves).
-    %% Se refinara en Sprint 3 con el detalle completo de puertos y
-    %% adaptadores una vez existan los casos de uso y controladores de
-    %% Sprint 2.
+    %% Las flechas van de afuera hacia adentro (las capas externas dependen
+    %% de las internas, nunca al reves) - Regla de Dependencia respetada.
     subgraph L4["Capa 4 - Infrastructure (frameworks y drivers)"]
         direction TB
-        Express["Servidor Express, rutas, middlewares"]
-        InMemory["Repositorios en memoria (adaptadores de ILevelRepository, IUserRepository, IProgressRepository)"]
+        Express["Servidor Express, rutas, middlewares AOP (logging, errores, auth JWT)"]
+        Sqlite["Repositorios SQLite (adaptadores de ILevelRepository, IUserRepository, IProgressRepository)"]
+        Security["BcryptPasswordHasher, JwtTokenService"]
         Mappers["LevelJsonMapper (adaptador del contrato compartido con el frontend)"]
     end
     subgraph L3["Capa 3 - Interface Adapters"]
         direction TB
-        Controllers["Controladores y route handlers (Sprint 2)"]
+        Controllers["Route handlers: auth, levels, progress, leaderboard"]
     end
     subgraph L2["Capa 2 - Application (casos de uso)"]
         direction TB
-        UseCases["Casos de uso Sprint 2: Auth, Progress, Leaderboard, Levels"]
+        UseCases["RegisterUser, LoginUser, SyncProgress, GetPlayerProgress, GetLeaderboard, ListLevels, GetLevel, UpsertLevel"]
     end
     subgraph L1["Capa 1 - Domain (entidades)"]
         direction TB
-        Entities["Jerarquia de Cell, LevelDefinition, User, PlayerProgress, puertos de repositorio"]
+        Entities["Board (aggregate root), jerarquia de Cell, LevelDefinition, User, PlayerProgress, puertos de repositorio"]
     end
 
     L4 -->|depende de| L3
@@ -35,4 +33,4 @@ flowchart TB
     class Entities domain
     class UseCases app
     class Controllers adapters
-    class Express,InMemory,Mappers infra
+    class Express,Sqlite,Security,Mappers infra

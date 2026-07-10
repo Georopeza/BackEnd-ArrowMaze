@@ -5,6 +5,7 @@ import { LeaderBoardEntry } from '../../../src/domain/value-objects/LeaderBoardE
 function buildProgressRepositoryStub(entries: LeaderBoardEntry[]): jest.Mocked<IProgressRepository> {
   return {
     findByUserAndLevel: jest.fn().mockResolvedValue(null),
+    findAllByUser: jest.fn().mockResolvedValue([]),
     save: jest.fn().mockResolvedValue(undefined),
     getLeaderboardByLevel: jest.fn().mockResolvedValue(entries),
   };

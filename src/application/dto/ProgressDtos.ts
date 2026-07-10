@@ -23,3 +23,9 @@ export interface LeaderboardQueryDto {
   levelId: string;
   limit?: number;
 }
+
+/** Progreso completo de un usuario (todos sus niveles con registro). */
+export interface PlayerProgressListDto {
+  userId: string;
+  levels: ProgressResultDto[];
+}

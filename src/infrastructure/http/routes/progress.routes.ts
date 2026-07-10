@@ -32,5 +32,19 @@ export function createProgressRouter(container: AppContainer, authMiddleware: Re
     }),
   );
 
+  // `GET /progress` devuelve todo el progreso del usuario autenticado, para
+  // que el cliente lo descargue y fusione al iniciar sesión desde un
+  // dispositivo o sesión nueva. El `userId` se toma del JWT (`req.auth`),
+  // nunca de un parámetro del cliente, para que un usuario no pueda leer el
+  // progreso de otro.
+  router.get(
+    '/progress',
+    authMiddleware,
+    asyncHandler(async (req, res) => {
+      const result = await container.getPlayerProgress.execute(req.auth!.userId);
+      res.status(200).json(result);
+    }),
+  );
+
   return router;
 }
