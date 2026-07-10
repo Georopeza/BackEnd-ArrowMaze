@@ -20,6 +20,13 @@ export class SyncProgressUseCase {
     private readonly levelRepository: ILevelRepository,
   ) {}
 
+  /**
+   * Fusiona el progreso reportado por el cliente con el mejor registro del servidor.
+   *
+   * @param dto Puntaje, movimientos, tiempo y estado de completado de la partida.
+   * @returns Progreso actualizado con los mejores valores conservados.
+   * @throws LevelNotFoundError si el `levelId` no existe en el catálogo.
+   */
   public async execute(dto: SyncProgressDto): Promise<ProgressResultDto> {
     const level = await this.levelRepository.findById(dto.levelId);
     if (!level) {

@@ -662,3 +662,83 @@ Al probar la sincronización de progreso entre ventanas/dispositivos, el equipo 
 - En Windows, `better-sqlite3` mantiene el archivo (y sus `.db-wal`/`.db-shm` de modo WAL) abierto con un handle nativo que no se libera de inmediato; el primer intento del test de persistencia fallaba con `EBUSY` al intentar borrar el directorio temporal en `afterEach`, incluso con reintentos de `fs.rmSync`. Como no hay una API pública de `close()` expuesta desde `createServer` (y agregarla infla el alcance de esta tarea), se optó por ignorar deliberadamente el error de limpieza del directorio temporal en el test — no afecta la aserción real (que los datos persistieron), solo la prolijidad del `afterEach`.
 - Gracias al DIP ya aplicado desde el inicio del proyecto, cambiar de "sin persistencia real" a "SQLite" fue un cambio *puramente aditivo* en la capa de infraestructura: cero líneas tocadas en dominio, casos de uso o rutas HTTP — la mejor demostración práctica de por qué se exige ese principio.
 - Decisión documentada explícitamente para la defensa: se eligió SQLite (relacional, embebido) en vez de una base NoSQL o un servicio en la nube porque (a) los datos del proyecto son tabulares con consultas de agregación, y (b) el enunciado solo pide la URL del repositorio como entregable, no un backend desplegado — depender de un servicio en la nube durante la sustentación añadiría un punto de falla innecesario sin exigirlo la rúbrica.
+
+---
+
+## Consulta #15 — Catálogo seed modular: un archivo JSON por nivel con descubrimiento automático
+
+**Tarea o problema abordado.**
+
+El catálogo inicial de 15 niveles vivía repartido en tres módulos TypeScript (`seedLevels01to05.ts`, `seedLevels06to10.ts`, `seedLevels11to15.ts`) ensamblados manualmente en `levelSeedCatalog.ts`, con una constante fija `LEVEL_SEED_CATALOG_SIZE = 15`. Ese diseño dificultaba añadir niveles (había que editar código, importar arrays y actualizar contadores en tests) y mezclaba la *autoría* del puzzle con la *infraestructura* de carga. Se solicitó migrar a un archivo JSON por nivel, con descubrimiento automático al arrancar, sin alterar el comportamiento observable del sistema (mismos 15 niveles, misma API, misma validación de solvabilidad).
+
+**Herramienta de IA utilizada.**
+
+- Cursor Agent (Composer), con acceso a lectura/escritura del repositorio y ejecución de tests.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Refactorizar el catálogo de niveles del backend para que cada nivel resida en un archivo JSON independiente, actualizando la infraestructura de seed y los tests necesarios para soportar descubrimiento automático del directorio, preservando el comportamiento actual del sistema (mismos 15 niveles, mismas respuestas HTTP y mismas reglas de validación) y documentando la consulta en `AI_USAGE.md` con redacción técnica profesional.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Fuente de datos | `levels/*.json` (raíz del repo) | Un `StructuredLevelJsonDto` por archivo; convención de nombre `NN-id.json` (p. ej. `01-simple-1.json`) |
+| Loader | `src/infrastructure/persistence/seed/loadLevelCatalogFromDirectory.ts` | Lee todos los `*.json` del directorio (orden lexicográfico determinista), parsea y devuelve el catálogo |
+| Ensamblador | `levelSeedCatalog.ts` | `LEVEL_SEED_CATALOG = loadLevelCatalogFromDirectory()`; `LEVEL_SEED_CATALOG_SIZE` derivado de `catalog.length` |
+| Bootstrap | `seedLevelCatalog.ts` / `server.ts` | Sin cambios de contrato: sigue iterando el catálogo y llamando `UpsertLevelUseCase` |
+| Eliminado | `seed/catalogEntries/*.ts` | Arrays TypeScript duplicados sustituidos por JSON |
+| Tests nuevos | `tests/unit/infrastructure/loadLevelCatalogFromDirectory.spec.ts` (6 casos) | Carga del directorio real, equivalencia con `LEVEL_SEED_CATALOG`, ignorar no-JSON, errores de directorio vacío/JSON inválido |
+| Tests existentes | `levelSeedCatalog.spec.ts`, `seed.spec.ts`, `catalog-http-playable.spec.ts` | Siguen en verde: 15 niveles, solvabilidad, `GET /levels` y `GET /levels/:id` |
+
+Para añadir un nivel en el futuro: crear `levels/16-nuevo-id.json` válido según el contrato, reiniciar el servidor con `seedLevels: true` (o usar `PUT /levels/:id` con JWT). No hace falta tocar código TypeScript ni constantes de tamaño.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Pendiente de revisión del equipo tras merge.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- El nombre del archivo no define la progresión del jugador: la ordenación en juego sigue dependiendo de `levelNumber` dentro del JSON; el prefijo numérico en el nombre es solo convención editorial.
+- `LEVEL_SEED_CATALOG_SIZE` deja de ser una constante mágica duplicada: al derivarse del catálogo cargado, los tests de integración que comparan contra `LEVEL_SEED_CATALOG.length` escalan solos al crecer el juego.
+- El directorio `levels/` debe desplegarse junto al proceso Node (resuelto con `path.resolve(__dirname, '../../../../levels')` desde `dist/` o `src/`); no se empaqueta dentro de `dist/` — coherente con tratar los puzzles como datos editables fuera del bundle compilado.
+
+---
+
+## Consulta #16 — Hot-reload del catálogo con patrón Observer y botón de actualización en el cliente
+
+**Tarea o problema abordado.**
+
+Tras modularizar el seed en `levels/*.json` (Consulta #15), seguía siendo necesario reiniciar el backend para que un archivo nuevo llegara a SQLite, y la app mantenía el catálogo en caché en memoria sin forma de refrescarlo desde la UI. Se pidió cerrar el ciclo: observar cambios en disco en tiempo de ejecución (patrón Observer) y permitir al jugador pulsar un botón sencillo en la pantalla de niveles que vuelva a descargar el catálogo y muestre una notificación con el resultado.
+
+**Herramienta de IA utilizada.**
+
+- Cursor Agent (Composer), con acceso a lectura/escritura del repositorio y ejecución de tests.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Implementar recarga en caliente del catálogo de niveles mediante el patrón Observer en el backend (vigilancia de `levels/*.json` y sincronización automática con SQLite sin reiniciar el proceso), añadir en el cliente un botón de actualización en la pantalla de selección de niveles que invalide la caché local, vuelva a consumir `GET /levels` y muestre una notificación al usuario tras la operación; incluir tests de regresión y documentar la consulta en `AI_USAGE.md` con redacción técnica profesional.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Sujeto Observer | `LevelCatalogFileSubject.ts` | `fs.watch` sobre `levels/` con debounce; notifica observadores en `add`/`change` de `*.json` |
+| Observador | `LevelCatalogUpsertObserver.ts` | Persiste cada archivo cambiado vía `UpsertLevelUseCase` |
+| Bootstrap | `startLevelCatalogWatcher.ts`, `server.ts` (`watchLevelCatalog: true` en `main.ts`) | Arranca el watcher junto al seed |
+| Sync reutilizable | `syncLevelCatalogFromDirectory.ts`, `parseLevelJsonFile.ts` | Seed y watcher comparten la misma ruta de upsert |
+| Puerto FE | `ILevelRepository.invalidateCache()` | Permite forzar nueva descarga |
+| Caso de uso FE | `RefreshLevelsUseCase` | Compara ids antes/después y devuelve `LevelCatalogRefreshResult` |
+| UI | `level_select_screen.dart` | `IconButton` refresh + `SnackBar` con mensaje i18n |
+| Tests BE | `levelCatalogWatcher.spec.ts`, `syncLevelCatalogFromDirectory.spec.ts` | Observer + upsert sin reinicio |
+| Tests FE | `refresh_levels_use_case_test.dart`, `cached_level_repository_test.dart`, `level_select_screen_test.dart` | Invalidación, conteos y notificación |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Pendiente de revisión del equipo tras merge.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- `fs.watch` en Windows puede emitir `rename` al crear archivos; el sujeto normaliza a `add` y ignora borrados (no se eliminan niveles de SQLite automáticamente en esta versión).
+- El botón de actualización en el cliente es necesario aunque el backend ya sincronice: `CachedLevelRepository` cachea en memoria la primera respuesta de `GET /levels` por sesión.
+- Flujo de demo recomendado: guardar `levels/16-*.json` con el backend en marcha → pulsar refresh en la app → SnackBar confirma niveles nuevos.

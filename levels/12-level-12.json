@@ -1,0 +1,21 @@
+{
+  "id": "level-12",
+  "levelNumber": 12,
+  "difficulty": "HARD",
+  "maxMoves": 8,
+  "maxTimeInSeconds": 120,
+  "width": 4,
+  "height": 1,
+  "exit": { "row": 0, "col": 0 },
+  "arrows": [
+    {
+      "id": "h3",
+      "direction": "LEFT",
+      "head": { "row": 0, "col": 3 },
+      "body": [
+        { "row": 0, "col": 2 },
+        { "row": 0, "col": 1 }
+      ]
+    }
+  ]
+}

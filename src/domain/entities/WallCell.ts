@@ -1,6 +1,6 @@
 import { Cell } from './Cell';
 
-// Celda que representa una pared inexpugnable.
+/** Celda de pared estática que bloquea el paso de las flechas. */
 export class WallCell extends Cell {
   public readonly type = 'WallCell';
 

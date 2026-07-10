@@ -18,6 +18,13 @@ export class LoginUserUseCase {
     private readonly tokenService: ITokenService,
   ) {}
 
+  /**
+   * Autentica al usuario y emite un token de sesión JWT.
+   *
+   * @param dto Credenciales de login validadas en la capa HTTP.
+   * @returns Token y datos públicos del usuario autenticado.
+   * @throws InvalidCredentialsError si el username o la contraseña no coinciden.
+   */
   public async execute(dto: LoginUserDto): Promise<AuthResultDto> {
     const user = await this.userRepository.findByUsername(dto.username);
     if (!user) {

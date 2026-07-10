@@ -2,7 +2,7 @@ import { ArrowCell } from '../../../src/domain/entities/ArrowCell';
 import { Direction } from '../../../src/domain/value-objects/Direction';
 
 describe('ArrowCell', () => {
-  it('expone el tipo y la dirección con la que fue creada', () => {
+  it('should_expose_type_direction_and_arrowId_from_construction', () => {
     // Arrange
     const direction = Direction.RIGHT;
 
@@ -15,7 +15,7 @@ describe('ArrowCell', () => {
     expect(cell.arrowId).toBe('arrow-1');
   });
 
-  it('describe la celda incluyendo su dirección', () => {
+  it('should_describe_cell_including_its_direction', () => {
     // Arrange
     const cell = new ArrowCell(Direction.UP, 'arrow-1');
 

@@ -1,5 +1,4 @@
-// Base pura para todas las celdas del tablero.
-// Define el contrato mínimo común para cualquier componente del tablero.
+/** Clase base abstracta para todas las celdas del tablero. */
 export abstract class Cell {
   /**
    * Tipo de celda o componente para identificación.

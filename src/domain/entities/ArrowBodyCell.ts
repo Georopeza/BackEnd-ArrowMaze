@@ -1,8 +1,6 @@
 import { Cell } from './Cell';
 
-// Celda que representa una parte del cuerpo de una flecha (no tiene dirección propia).
-// Se vincula a su cabeza (ArrowCell) mediante un arrowId compartido, permitiendo que
-// LevelToBoardMapper reconstruya flechas de más de una celda a partir del tablero estático.
+/** Celda de cuerpo de flecha vinculada a su cabeza por arrowId. */
 export class ArrowBodyCell extends Cell {
   public readonly type = 'ArrowBodyCell';
   public readonly arrowId: string;

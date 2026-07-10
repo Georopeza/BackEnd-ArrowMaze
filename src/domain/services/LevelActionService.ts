@@ -5,9 +5,9 @@ import { getStep } from '../value-objects/DirectionVector';
 import { Arrow } from '../entities/Arrow';
 import { WallCell } from '../entities/WallCell';
 
+/** Ejecuta acciones de disparo sobre el tablero en vivo. */
 export class LevelActionService {
-  // Ejecuta la interacción de disparo sobre la celda indicada: si hay una flecha
-  // y su camino está despejado, la saca del tablero y limpia sus celdas.
+  /** Dispara la flecha en la celda indicada si su camino está despejado. */
   public interactWithCell(board: Board, row: number, col: number): boolean {
     const pos = new Position(row, col);
     const arrow = board.findArrowAt(pos);

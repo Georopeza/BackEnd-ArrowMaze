@@ -10,6 +10,13 @@ export class GetLevelUseCase {
     private readonly levelJsonMapper: LevelJsonMapper,
   ) {}
 
+  /**
+   * Obtiene un nivel por identificador en formato de transporte.
+   *
+   * @param levelId Identificador único del nivel solicitado.
+   * @returns DTO del nivel encontrado.
+   * @throws LevelNotFoundError si no existe un nivel con ese id.
+   */
   public async execute(levelId: string): Promise<StructuredLevelJsonDto> {
     const level = await this.levelRepository.findById(levelId);
     if (!level) {

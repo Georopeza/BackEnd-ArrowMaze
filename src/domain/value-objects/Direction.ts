@@ -1,5 +1,4 @@
-// Value Object: Dirección de movimiento en el juego Arrow Maze.
-// Este enum es puro y no depende de ningún framework externo.
+/** Dirección de movimiento o apuntado en el tablero. */
 export enum Direction {
   // El jugador o la celda apunta hacia arriba.
   UP = 'UP',

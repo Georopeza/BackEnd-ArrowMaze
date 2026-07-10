@@ -12,6 +12,10 @@ const DEFAULT_EXPIRES_IN = '2h';
  * de dónde sale el secreto real.
  */
 export class JwtTokenService implements ITokenService {
+  /**
+   * @param secret Clave de firma HMAC del JWT (inyectada desde configuración).
+   * @param expiresIn Duración del token (formato aceptado por `jsonwebtoken`, p. ej. `2h`).
+   */
   constructor(
     private readonly secret: string,
     private readonly expiresIn: string = DEFAULT_EXPIRES_IN,

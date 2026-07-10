@@ -6,7 +6,7 @@ import { createServer } from './infrastructure/http/server';
  * Arranque del proceso HTTP: crea la app (con seed de 15 niveles), escucha en `PORT`.
  *
  * El catálogo se inserta vía `seedLevelCatalog` antes de aceptar peticiones;
- * ver `LEVEL_SEED_CATALOG` en `infrastructure/persistence/seed/`.
+ * cada nivel vive en `levels/*.json` y se carga con `loadLevelCatalogFromDirectory`.
  *
  * `DB_PATH` apunta a un archivo SQLite real (por defecto `data/arrowmaze.db`
  * en la raíz del proyecto) para que usuarios, niveles y progreso sobrevivan
@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
   const jwtSecret = process.env.JWT_SECRET ?? 'change-me-in-production';
   const dbPath = process.env.DB_PATH ?? path.join(process.cwd(), 'data', 'arrowmaze.db');
 
-  const app = await createServer(jwtSecret, { seedLevels: true, dbPath });
+  const app = await createServer(jwtSecret, { seedLevels: true, watchLevelCatalog: true, dbPath });
 
   app.listen(port, () => {
     // eslint-disable-next-line no-console

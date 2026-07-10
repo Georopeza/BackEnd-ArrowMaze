@@ -1,18 +1,13 @@
 import { StructuredLevelJsonDto } from '../../../../docs/contract/level.contract';
-import { SEED_LEVELS_01_TO_05 } from './catalogEntries/seedLevels01to05';
-import { SEED_LEVELS_06_TO_10 } from './catalogEntries/seedLevels06to10';
-import { SEED_LEVELS_11_TO_15 } from './catalogEntries/seedLevels11to15';
-
-/**
- * Número total de niveles que el bootstrap inserta al arrancar el servidor.
- *
- * Usado en tests de integración para verificar `GET /levels` sin duplicar
- * la longitud del array en varios archivos.
- */
-export const LEVEL_SEED_CATALOG_SIZE = 15;
+import { loadLevelCatalogFromDirectory } from './loadLevelCatalogFromDirectory';
 
 /**
  * Catálogo completo de niveles en formato wire (`StructuredLevelJsonDto`).
+ *
+ * Cada nivel vive en un archivo JSON bajo `levels/` en la raíz del repo
+ * (convención `NN-id.json`, p. ej. `01-simple-1.json`). Para añadir niveles
+ * en el futuro basta con agregar un JSON válido a esa carpeta y reiniciar
+ * el servidor con seed habilitado.
  *
  * Fuente compartida con el frontend (`docs/levels/simple-1.json` para el
  * nivel 1). Cada entrada debe ser jugable según `LevelSolvabilityValidator`
@@ -21,18 +16,20 @@ export const LEVEL_SEED_CATALOG_SIZE = 15;
  * Se inserta al arrancar el servidor vía [seedLevelCatalog] cuando
  * `createServer(..., { seedLevels: true })`.
  */
-export const LEVEL_SEED_CATALOG: StructuredLevelJsonDto[] = [
-  ...SEED_LEVELS_01_TO_05,
-  ...SEED_LEVELS_06_TO_10,
-  ...SEED_LEVELS_11_TO_15,
-];
+export const LEVEL_SEED_CATALOG: StructuredLevelJsonDto[] = loadLevelCatalogFromDirectory();
+
+/**
+ * Número total de niveles que el bootstrap inserta al arrancar el servidor.
+ *
+ * Derivado del catálogo cargado desde disco para no duplicar la cantidad
+ * en varios archivos al crecer el juego.
+ */
+export const LEVEL_SEED_CATALOG_SIZE = LEVEL_SEED_CATALOG.length;
 
 /**
  * Devuelve el catálogo ordenado por `levelNumber` ascendente.
  *
- * Útil para documentación o herramientas que requieran progresión lineal;
- * el orden del array fuente ya es 1…15, pero esta función garantiza la
- * invariante tras futuras ediciones del catálogo.
+ * Útil para documentación o herramientas que requieran progresión lineal.
  */
 export function getOrderedSeedCatalog(): StructuredLevelJsonDto[] {
   return [...LEVEL_SEED_CATALOG].sort((a, b) => a.levelNumber - b.levelNumber);

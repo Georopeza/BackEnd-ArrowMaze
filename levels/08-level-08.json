@@ -1,0 +1,14 @@
+{
+  "id": "level-08",
+  "levelNumber": 8,
+  "difficulty": "EASY",
+  "maxMoves": 6,
+  "maxTimeInSeconds": 90,
+  "width": 5,
+  "height": 1,
+  "exit": { "row": 0, "col": 4 },
+  "arrows": [
+    { "id": "e3", "direction": "LEFT", "head": { "row": 0, "col": 1 }, "body": [] },
+    { "id": "e4", "direction": "RIGHT", "head": { "row": 0, "col": 3 }, "body": [] }
+  ]
+}

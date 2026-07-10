@@ -8,12 +8,9 @@ import { Position } from '../value-objects/Position';
 import { BoardDimensions } from '../value-objects/BoardDimensions';
 import { Board } from '../aggregates/Board';
 
-// Puente entre el modelo de autoría de niveles (LevelDefinition.board: Cell[][]) y el modelo
-// de juego en vivo (Board + Arrow[]). Sin este mapper, un nivel construido con LevelBuilder/
-// CellFactory nunca podría convertirse en un tablero jugable.
+/** Convierte LevelDefinition (autoría) en Board jugable con flechas y paredes. */
 export class LevelToBoardMapper {
-  // Convierte un LevelDefinition en un Board listo para jugar: reconstruye cada flecha
-  // (agrupando su cabeza con las celdas de cuerpo que compartan arrowId) y traslada las paredes.
+  /** Reconstruye flechas y paredes del nivel en un tablero listo para jugar. */
   public toBoard(level: LevelDefinition): Board {
     const rows = level.board.length;
     const cols = level.board[0].length;

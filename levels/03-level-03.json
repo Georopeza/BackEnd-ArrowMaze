@@ -1,0 +1,14 @@
+{
+  "id": "level-03",
+  "levelNumber": 3,
+  "difficulty": "MEDIUM",
+  "maxMoves": 8,
+  "maxTimeInSeconds": 90,
+  "width": 3,
+  "height": 3,
+  "exit": { "row": 0, "col": 2 },
+  "arrows": [
+    { "id": "b1", "direction": "RIGHT", "head": { "row": 0, "col": 0 }, "body": [] },
+    { "id": "b2", "direction": "DOWN", "head": { "row": 1, "col": 1 }, "body": [] }
+  ]
+}

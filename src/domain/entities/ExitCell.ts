@@ -1,6 +1,6 @@
 import { Cell } from './Cell';
 
-// Celda que representa la salida del nivel.
+/** Celda de salida que marca el objetivo del nivel. */
 export class ExitCell extends Cell {
   public readonly type = 'ExitCell';
 

@@ -5,10 +5,12 @@ import { Arrow } from '../entities/Arrow';
 import { Position } from '../value-objects/Position';
 import { BoardDimensions } from '../value-objects/BoardDimensions';
 
+/** Agregado raíz que representa el tablero jugable con flechas y celdas estáticas. */
 export class Board {
   private grid: Cell[][];
   private arrows: Arrow[];
 
+  /** Crea un tablero vacío con las dimensiones indicadas. */
   constructor(private readonly dimensions: BoardDimensions) {
     this.grid = this.createEmptyGrid();
     this.arrows = [];
@@ -20,7 +22,7 @@ export class Board {
     );
   }
 
-  // Mutators / query API mínimos para que servicios externos operen sobre el tablero.
+  /** Registra una flecha validando límites, IDs únicos y ausencia de solapamiento. */
   public addArrow(arrow: Arrow): void {
   // 1. Validar cada posición de la flecha contra los límites del tablero
   for (const pos of arrow.getAllPositions()) {
@@ -46,20 +48,22 @@ export class Board {
   this.arrows.push(arrow);
 }
 
+  /** Devuelve las flechas actualmente presentes en el tablero. */
   public getArrows(): Arrow[] {
     return this.arrows;
   }
 
+  /** Devuelve las dimensiones del tablero. */
   public getDimensions(): BoardDimensions {
     return this.dimensions;
   }
 
+  /** Busca la flecha que ocupa la posición dada, si existe. */
   public findArrowAt(pos: Position): Arrow | undefined {
     return this.arrows.find(a => a.occupies(pos));
   }
 
-  // Coloca una pared (obstáculo estático) en el grid. A diferencia de las flechas,
-  // las paredes no se mueven ni se disparan: solo bloquean la línea de visión.
+  /** Coloca una pared estática que bloquea la línea de visión. */
   public addWall(pos: Position): void {
     if (!this.dimensions.isValidPosition(pos.row, pos.col)) {
       throw new Error('Wall is out of the board boundaries');
@@ -67,7 +71,7 @@ export class Board {
     this.grid[pos.row][pos.col] = new WallCell();
   }
 
-  // Consulta el contenido estático del grid en una posición (por ejemplo, para saber si hay una pared).
+  /** Consulta la celda estática del grid en la coordenada indicada. */
   public getCellAt(row: number, col: number): Cell {
     if (!this.dimensions.isValidPosition(row, col)) {
       throw new Error('Position is out of the board boundaries');
@@ -75,11 +79,12 @@ export class Board {
     return this.grid[row][col];
   }
 
-  // El nivel está resuelto cuando ya no quedan flechas por disparar en el tablero.
+  /** Indica si el nivel está resuelto (sin flechas restantes). */
   public isSolved(): boolean {
     return this.arrows.length === 0;
   }
 
+  /** Restablece las posiciones indicadas como celdas vacías. */
   public clearPositions(positions: Position[]): void {
     positions.forEach(pos => {
       if (this.dimensions.isValidPosition(pos.row, pos.col)) {
@@ -88,6 +93,7 @@ export class Board {
     });
   }
 
+  /** Elimina una flecha por ID y limpia sus celdas del grid. */
   public removeArrowById(id: string): void {
     const arrow = this.arrows.find(a => a.getId().value === id);
     if (arrow) {

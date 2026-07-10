@@ -1,5 +1,4 @@
-// Entidad de dominio para registrar el progreso del jugador en un nivel.
-// Contiene lógica de negocio para actualizar récords solo cuando los nuevos datos son mejores.
+/** Progreso del jugador en un nivel; actualiza récords solo si mejoran. */
 export class PlayerProgress {
   public readonly id: string;
   public readonly userId: string;
