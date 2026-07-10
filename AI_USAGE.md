@@ -742,3 +742,38 @@ Tras modularizar el seed en `levels/*.json` (Consulta #15), seguía siendo neces
 - `fs.watch` en Windows puede emitir `rename` al crear archivos; el sujeto normaliza a `add` y ignora borrados (no se eliminan niveles de SQLite automáticamente en esta versión).
 - El botón de actualización en el cliente es necesario aunque el backend ya sincronice: `CachedLevelRepository` cachea en memoria la primera respuesta de `GET /levels` por sesión.
 - Flujo de demo recomendado: guardar `levels/16-*.json` con el backend en marcha → pulsar refresh en la app → SnackBar confirma niveles nuevos.
+
+---
+
+## Consulta #17 — Validación de flechas multi-celda (máx. 3) y ajuste de niveles JSON
+
+**Tarea o problema abordado.**
+
+Alinear el backend con el nuevo diseño visual del cliente: cada flecha puede ocupar como máximo **3 celdas** (cabeza + 2 segmentos de `body`). Se añadió validación en `UpsertLevelUseCase` y se recortaron niveles seed que excedían el límite.
+
+**Herramienta de IA utilizada.**
+
+- Cursor Agent (Composer).
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Implementar el rediseño visual del cliente Flutter según la paleta Tollens y el logo del laberinto: flechas con trazo continuo que abarquen hasta tres celdas del tablero, tablero minimalista con esquinas redondeadas, tema global coherente, validación del límite de segmentos en el contrato compartido, documentación en español en cada función nueva, y registro en `AI_USAGE.md` con redacción técnica profesional.
+
+**Resultado obtenido.**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| Validador | `src/domain/validators/arrowPlacementValidator.ts` | `MAX_ARROW_BODY_SEGMENTS = 2` |
+| Caso de uso | `UpsertLevelUseCase.execute` | Rechaza DTOs con flechas demasiado largas antes del BFS |
+| Contrato | `docs/contract/level.contract.ts` | Documenta el límite de 3 celdas |
+| Niveles | `levels/01-simple-1.json`, `levels/15-level-15.json` | Flechas `f6`, `f7`, `k-free` recortadas a ≤ 2 body |
+| Tests | `tests/unit/domain/arrowPlacementValidator.spec.ts` | Acepta 2 segmentos; rechaza 3+ |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Pendiente de revisión del equipo tras merge.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Validar en el upsert evita persistir niveles que el cliente no puede dibujar correctamente con el nuevo `ArrowBoardPainter`.
+- Recortar flechas largas puede cambiar la solvabilidad: conviene re-ejecutar tests E2E del catálogo tras editar JSON.

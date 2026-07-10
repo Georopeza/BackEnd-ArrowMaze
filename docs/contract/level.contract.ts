@@ -22,6 +22,9 @@ export type ArrowDirectionDto = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 /**
  * Una flecha del nivel: su celda "cabeza" (la que efectivamente se mueve)
  * y las celdas de "cuerpo" que ocupa además de la cabeza.
+ *
+ * Máximo 2 segmentos de cuerpo (3 celdas en total incluyendo la cabeza),
+ * alineado con el diseño visual del cliente Flutter.
  */
 export interface StructuredArrowJsonDto {
   id: string;

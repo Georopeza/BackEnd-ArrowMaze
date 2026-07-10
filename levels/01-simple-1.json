@@ -27,10 +27,7 @@
       "head": { "row": 2, "col": 1 },
       "body": [
         { "row": 3, "col": 1 },
-        { "row": 4, "col": 1 },
-        { "row": 4, "col": 0 },
-        { "row": 3, "col": 0 },
-        { "row": 2, "col": 0 }
+        { "row": 4, "col": 1 }
       ]
     },
     {
@@ -39,10 +36,7 @@
       "head": { "row": 4, "col": 2 },
       "body": [
         { "row": 3, "col": 2 },
-        { "row": 3, "col": 3 },
-        { "row": 3, "col": 4 },
-        { "row": 2, "col": 4 },
-        { "row": 1, "col": 4 }
+        { "row": 2, "col": 2 }
       ]
     },
     { "id": "f8", "direction": "LEFT", "head": { "row": 4, "col": 4 }, "body": [{ "row": 4, "col": 3 }] }
