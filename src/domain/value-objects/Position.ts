@@ -1,5 +1,4 @@
-// Value Object: Posición inmutable en el tablero.
-// row y col representan las coordenadas de la celda.
+/** Posición inmutable (fila, columna) en el tablero. */
 export class Position {
   public readonly row: number;
   public readonly col: number;

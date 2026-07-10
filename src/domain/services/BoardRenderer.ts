@@ -1,9 +1,9 @@
 import { Board } from '../aggregates/Board';
 import { Position } from '../value-objects/Position';
 
+/** Genera una representación textual del estado del tablero. */
 export class BoardRenderer {
-  // Genera una representación textual del tablero (sin hacer I/O: el dominio no debe imprimir nada;
-  // quien consuma este string decide dónde mostrarlo, ej. consola, log, o una vista).
+  /** Devuelve una cadena ASCII con flechas, cabezas y celdas vacías. */
   public render(board: Board): string {
     const dimensions = board.getDimensions();
     const arrows = board.getArrows();

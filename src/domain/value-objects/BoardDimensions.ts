@@ -1,6 +1,4 @@
-// Value Object: Dimensiones inmutables del tablero Arrow Maze.
-// Encapsula las dimensiones (filas y columnas) como un objeto de valor único e inmutable.
-// Principio SOLID: Single Responsibility (SRP) - responsable solo de validar dimensiones.
+/** Dimensiones inmutables (filas y columnas) del tablero. */
 export class BoardDimensions {
   public readonly rows: number;
   public readonly cols: number;

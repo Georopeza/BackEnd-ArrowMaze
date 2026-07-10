@@ -6,15 +6,17 @@ import { EmptyCell } from '../entities/EmptyCell';
 import { ExitCell } from '../entities/ExitCell';
 import { Direction } from '../value-objects/Direction';
 
-// Factory registrable para crear celdas; permite extender sin modificar la clase.
-
-// Definimos los tipos fijos del juego base, pero dejamos la puerta abierta a strings libres
+/** Tipos de celda predefinidos del juego base. */
 export type DefaultCellType = 'ArrowCell' | 'ArrowBodyCell' | 'WallCell' | 'EmptyCell' | 'ExitCell';
+
+/** Tipo de celda admitido; acepta tipos base o personalizados registrados. */
 export type CellType = DefaultCellType | (string & Record<never, never>);
 
+/** Factory registrable para crear celdas sin modificar la clase al extender tipos. */
 export class CellFactory {
   private registry: Map<string, (data?: any) => Cell> = new Map();
 
+  /** Registra los tipos de celda por defecto del juego. */
   constructor() {
     // registraciones por defecto
     this.register('ArrowCell', (data?: any) => {
@@ -31,10 +33,12 @@ export class CellFactory {
     this.register('ExitCell', () => new ExitCell());
   }
 
+  /** Registra una función creadora para un tipo de celda. */
   public register(type: string, factoryFn: (data?: any) => Cell): void {
     this.registry.set(type, factoryFn);
   }
 
+  /** Crea una celda del tipo indicado usando el registro. */
   public createCell(type: CellType, data?: any): Cell {
     const factoryFn = this.registry.get(type);
     if (!factoryFn) throw new Error(`Unknown cell type: ${type}`);

@@ -6,6 +6,7 @@ import { StructuredLevelJsonDto } from '../../../../docs/contract/level.contract
  * Lee y parsea un archivo JSON de nivel (`StructuredLevelJsonDto`).
  *
  * @param filePath Ruta absoluta al archivo `.json`.
+ * @returns DTO del nivel parseado.
  * @throws Error si el archivo no existe o el JSON es inválido.
  */
 export function parseLevelJsonFile(filePath: string): StructuredLevelJsonDto {

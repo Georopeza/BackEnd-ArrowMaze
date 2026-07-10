@@ -4,8 +4,7 @@ import { ArrowBodyCell } from '../entities/ArrowBodyCell';
 import { Direction } from '../value-objects/Direction';
 import { Difficulty, LevelDefinition } from '../entities/LevelDefinition';
 
-// Patrón Builder para construir LevelDefinition de forma incremental.
-// Permite ensamblar niveles complejos paso a paso.
+/** Builder para construir LevelDefinition de forma incremental. */
 export class LevelBuilder {
   private id = '';
   private levelNumber = 1;
@@ -14,26 +13,31 @@ export class LevelBuilder {
   private maxMoves = 0;
   private maxTimeInSeconds = 0;
 
+  /** Asigna el identificador del nivel. */
   public withId(id: string): this {
     this.id = id;
     return this;
   }
 
+  /** Asigna el número ordinal del nivel. */
   public withLevelNumber(levelNumber: number): this {
     this.levelNumber = levelNumber;
     return this;
   }
 
+  /** Asigna la dificultad del nivel. */
   public withDifficulty(difficulty: Difficulty): this {
     this.difficulty = difficulty;
     return this;
   }
 
+  /** Inicializa el tablero con las dimensiones indicadas. */
   public withDimensions(rows: number, cols: number): this {
     this.board = Array.from({ length: rows }, () => Array<Cell>(cols).fill(null as unknown as Cell));
     return this;
   }
 
+  /** Coloca una celda en la coordenada especificada. */
   public addCell(row: number, col: number, cell: Cell): this {
     if (!this.board[row]) {
       throw new Error('Board row does not exist');
@@ -46,8 +50,7 @@ export class LevelBuilder {
     return this;
   }
 
-  // Agrega una flecha completa (cabeza + cuerpo opcional) en un solo paso, sin que el
-  // llamador tenga que armar manualmente cada ArrowCell/ArrowBodyCell y coordinar sus arrowId.
+  /** Agrega una flecha completa (cabeza y cuerpo opcional) en un solo paso. */
   public addArrow(
     row: number,
     col: number,
@@ -60,12 +63,14 @@ export class LevelBuilder {
     return this;
   }
 
+  /** Define los límites de movimientos y tiempo del nivel. */
   public withConstraints(maxMoves: number, maxTimeInSeconds: number): this {
     this.maxMoves = maxMoves;
     this.maxTimeInSeconds = maxTimeInSeconds;
     return this;
   }
 
+  /** Construye la LevelDefinition validando que el id esté definido. */
   public build(): LevelDefinition {
     if (!this.id) {
       throw new Error('Level id is required');

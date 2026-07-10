@@ -66,7 +66,7 @@ const simpleLevel: StructuredLevelJsonDto = {
 describe('LevelJsonMapper', () => {
   const mapper = new LevelJsonMapper();
 
-  it('mapea los metadatos básicos del nivel', () => {
+  it('should_map_basic_level_metadata', () => {
     // Act
     const level = mapper.toLevelDefinition(simpleLevel);
 
@@ -80,7 +80,7 @@ describe('LevelJsonMapper', () => {
     expect(level.board[0]).toHaveLength(5);
   });
 
-  it('coloca la salida (exit) en la celda indicada por el DTO', () => {
+  it('should_place_exit_cell_at_dto_coordinates', () => {
     // Act
     const level = mapper.toLevelDefinition(simpleLevel);
 
@@ -88,7 +88,7 @@ describe('LevelJsonMapper', () => {
     expect(level.board[0][4]).toBeInstanceOf(ExitCell);
   });
 
-  it('vincula la cabeza y el cuerpo de cada flecha mediante un arrowId compartido', () => {
+  it('should_link_arrow_head_and_body_cells_via_shared_arrowId', () => {
     // Act
     const level = mapper.toLevelDefinition(simpleLevel);
 
@@ -105,7 +105,7 @@ describe('LevelJsonMapper', () => {
     expect((bodyCell as ArrowBodyCell).arrowId).toBe('f1');
   });
 
-  it('reconstruye el mismo DTO al aplicar toDto sobre el resultado de toLevelDefinition', () => {
+  it('should_round_trip_dto_via_toLevelDefinition_and_toDto', () => {
     // Act
     const level = mapper.toLevelDefinition(simpleLevel);
     const dto = mapper.toDto(level);

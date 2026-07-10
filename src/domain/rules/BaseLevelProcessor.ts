@@ -1,11 +1,11 @@
 import { Cell } from '../entities/Cell';
 import { LevelDefinition } from '../entities/LevelDefinition';
 
-// Template Method que define el esqueleto para el procesamiento de una acción en el juego.
-// Permite a las variantes implementar o extender pasos específicos sin cambiar el flujo.
+/** Template Method que define el flujo de procesamiento de una acción en el juego. */
 export abstract class BaseLevelProcessor {
   protected level: LevelDefinition;
 
+  /** Asocia el procesador con la definición del nivel. */
   constructor(level: LevelDefinition) {
     this.level = level;
   }

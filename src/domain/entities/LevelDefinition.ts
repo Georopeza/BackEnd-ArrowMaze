@@ -3,6 +3,7 @@ import { ExitCell } from './ExitCell';
 import { ArrowCell } from './ArrowCell';
 import { ArrowBodyCell } from './ArrowBodyCell';
 
+/** Niveles de dificultad disponibles para un nivel. */
 export enum Difficulty {
   EASY = 'EASY',
   MEDIUM = 'MEDIUM',
@@ -13,10 +14,13 @@ export enum Difficulty {
   EXPERT = 'EXPERT',
 }
 
+/** Estrategia de cálculo de puntaje según movimientos y tiempo. */
 export interface IScoreStrategy {
+  /** Calcula el puntaje a partir de movimientos y tiempo empleado. */
   calculateScore(movements: number, timeSpent: number): number;
 }
 
+/** Definición inmutable de un nivel con tablero, límites y dificultad. */
 export class LevelDefinition {
   public readonly id: string;
   public readonly levelNumber: number;
@@ -25,6 +29,7 @@ export class LevelDefinition {
   public readonly maxMoves: number;
   public readonly maxTimeInSeconds: number;
 
+  /** Valida invariantes del tablero y límites de juego al construir el nivel. */
   constructor(
     id: string,
     levelNumber: number,
@@ -85,6 +90,7 @@ export class LevelDefinition {
     this.maxTimeInSeconds = maxTimeInSeconds;
   }
 
+  /** Delega el cálculo de puntaje a la estrategia indicada. */
   public calculateScore(strategy: IScoreStrategy, movements: number, timeSpent: number): number {
     return strategy.calculateScore(movements, timeSpent);
   }

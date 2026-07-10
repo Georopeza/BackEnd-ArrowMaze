@@ -1,12 +1,13 @@
 import { Direction } from '../value-objects/Direction';
 import { getStep } from '../value-objects/DirectionVector';
 
-// Interfaces que mapean exactamente la estructura de tu JSON acordado
+/** Coordenada de fila y columna en el tablero. */
 export interface Coordinate {
   row: number;
   col: number;
 }
 
+/** Pieza de flecha con cabeza, cuerpo y dirección para validación. */
 export interface ArrowPiece {
   id: string;
   direction: Direction;
@@ -14,6 +15,7 @@ export interface ArrowPiece {
   body: Coordinate[];
 }
 
+/** DTO estructurado de nivel usado para validar solvabilidad. */
 export interface StructuredLevelJsonDto {
   id: string;
   levelNumber: number;
@@ -27,11 +29,10 @@ export interface StructuredLevelJsonDto {
   walls?: Coordinate[];
 }
 
+/** Valida si un nivel estructurado tiene al menos una secuencia de disparos ganadora. */
 export class LevelSolvabilityValidator {
 
-  /**
-   * Punto de entrada principal para validar el nivel estructurado.
-   */
+  /** Comprueba si el nivel JSON es jugable mediante backtracking. */
   public isPlayable(levelJson: StructuredLevelJsonDto): boolean {
     // Si el nivel nace sin flechas, técnicamente ya está resuelto (o es inválido según invariantes)
     if (!levelJson.arrows || levelJson.arrows.length === 0) {
@@ -79,9 +80,7 @@ export class LevelSolvabilityValidator {
     return activeArrows.filter(arrow => this.canArrowExit(arrow, activeArrows, width, height, walls));
   }
 
-  /**
-   * Verifica si la trayectoria de la cabeza de la flecha hacia el exterior está despejada.
-   */
+  /** Verifica si la trayectoria de la flecha hacia el exterior está despejada. */
   public canArrowExit(arrow: ArrowPiece, activeArrows: ArrowPiece[], width: number, height: number, walls: Coordinate[] = []): boolean {
     const { rowStep, colStep } = getStep(arrow.direction);
 

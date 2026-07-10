@@ -21,16 +21,32 @@ interface LevelRow {
  * repositorio realmente necesita (`findByLevelNumber`, orden de catálogo).
  */
 export class SqliteLevelRepository implements ILevelRepository {
+  /**
+   * @param db Conexión SQLite ya inicializada con el esquema de `levels`.
+   * @param mapper Traductor wire↔dominio; por defecto crea una instancia nueva.
+   */
   constructor(
     private readonly db: Database.Database,
     private readonly mapper: LevelJsonMapper = new LevelJsonMapper(),
   ) {}
 
+  /**
+   * Recupera un nivel por su identificador de catálogo.
+   *
+   * @param id Identificador único del nivel (`StructuredLevelJsonDto.id`).
+   * @returns Agregado de dominio reconstruido desde JSON o `null`.
+   */
   public async findById(id: string): Promise<LevelDefinition | null> {
     const row = this.db.prepare('SELECT * FROM levels WHERE id = ?').get(id) as LevelRow | undefined;
     return row ? this.toDomain(row) : null;
   }
 
+  /**
+   * Recupera un nivel por su número de progresión en el juego.
+   *
+   * @param levelNumber Orden lineal del nivel (1, 2, 3…).
+   * @returns Agregado de dominio o `null` si no hay entrada con ese número.
+   */
   public async findByLevelNumber(levelNumber: number): Promise<LevelDefinition | null> {
     const row = this.db.prepare('SELECT * FROM levels WHERE levelNumber = ?').get(levelNumber) as
       | LevelRow
@@ -38,15 +54,30 @@ export class SqliteLevelRepository implements ILevelRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  /**
+   * Lista todos los niveles persistidos sin orden garantizado.
+   *
+   * @returns Colección completa de definiciones de nivel.
+   */
   public async listAll(): Promise<LevelDefinition[]> {
     const rows = this.db.prepare('SELECT * FROM levels').all() as LevelRow[];
     return rows.map(row => this.toDomain(row));
   }
 
+  /**
+   * Inserta un nivel nuevo o lo sobrescribe si el `id` ya existe.
+   *
+   * @param level Definición de dominio a serializar como JSON en la columna `dto`.
+   */
   public async save(level: LevelDefinition): Promise<void> {
     this.upsert(level);
   }
 
+  /**
+   * Actualiza la definición de un nivel existente (upsert por `id`).
+   *
+   * @param level Definición de dominio con el estado más reciente del tablero.
+   */
   public async update(level: LevelDefinition): Promise<void> {
     this.upsert(level);
   }

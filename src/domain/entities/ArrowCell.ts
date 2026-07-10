@@ -1,9 +1,7 @@
 import { Cell } from './Cell';
 import { Direction } from '../value-objects/Direction';
 
-// Celda que contiene la cabeza de una flecha con dirección fija.
-// El arrowId identifica a la flecha y permite vincularla con sus ArrowBodyCell (si tiene cuerpo),
-// de modo que LevelToBoardMapper pueda reconstruir la flecha completa al armar un Board jugable.
+/** Celda con la cabeza de una flecha; se vincula al cuerpo mediante arrowId. */
 export class ArrowCell extends Cell {
   public readonly type = 'ArrowCell';
   public readonly direction: Direction;
@@ -27,6 +25,7 @@ export class ArrowCell extends Cell {
     return `ArrowCell pointing ${this.direction}`;
   }
 
+  /** Devuelve la dirección de disparo de la flecha. */
   public getDirection(): Direction {
     return this.direction;
   }

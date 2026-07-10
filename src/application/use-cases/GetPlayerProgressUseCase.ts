@@ -13,6 +13,12 @@ import { PlayerProgressListDto } from '../dto/ProgressDtos';
 export class GetPlayerProgressUseCase {
   constructor(private readonly progressRepository: IProgressRepository) {}
 
+  /**
+   * Devuelve todo el progreso persistido de un usuario en todos los niveles.
+   *
+   * @param userId Identificador del jugador (típicamente extraído del JWT).
+   * @returns Lista de progresos por nivel con mejores métricas almacenadas.
+   */
   public async execute(userId: string): Promise<PlayerProgressListDto> {
     const all = await this.progressRepository.findAllByUser(userId);
 

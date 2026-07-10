@@ -16,6 +16,10 @@ export interface SyncLevelCatalogResult {
 
 /**
  * Lista rutas absolutas de todos los `*.json` en [levelsDir] (orden lexicográfico).
+ *
+ * @param levelsDir Carpeta del catálogo seed; por defecto [DEFAULT_LEVELS_DIRECTORY].
+ * @returns Rutas absolutas a cada archivo de nivel.
+ * @throws Error si el directorio no existe.
  */
 export function listLevelJsonFiles(levelsDir: string = DEFAULT_LEVELS_DIRECTORY): string[] {
   if (!fs.existsSync(levelsDir)) {
@@ -33,6 +37,11 @@ export function listLevelJsonFiles(levelsDir: string = DEFAULT_LEVELS_DIRECTORY)
  * Inserta o actualiza un nivel en el repositorio a partir de un archivo JSON.
  *
  * Reutiliza [UpsertLevelUseCase] (validación de solvabilidad incluida).
+ *
+ * @param container Composition root con el caso de uso de upsert.
+ * @param filePath Ruta absoluta al archivo `.json` del nivel.
+ * @returns DTO persistido tras la validación y el guardado.
+ * @throws Propaga errores de parseo o de dominio (p. ej. nivel no resoluble).
  */
 export async function upsertLevelFromFile(
   container: AppContainer,
@@ -44,6 +53,11 @@ export async function upsertLevelFromFile(
 
 /**
  * Sincroniza todos los JSON de [levelsDir] con el repositorio (seed / recarga completa).
+ *
+ * @param container Composition root ya construido.
+ * @param levelsDir Carpeta del catálogo; por defecto [DEFAULT_LEVELS_DIRECTORY].
+ * @returns Cantidad de niveles sincronizados e ids afectados.
+ * @throws Error si el directorio está vacío o algún upsert falla.
  */
 export async function syncLevelCatalogFromDirectory(
   container: AppContainer,

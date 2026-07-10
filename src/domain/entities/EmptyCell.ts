@@ -1,6 +1,6 @@
 import { Cell } from './Cell';
 
-// Celda que representa un espacio vacío sobre el tablero.
+/** Celda que representa un espacio vacío en el tablero. */
 export class EmptyCell extends Cell {
   public readonly type = 'EmptyCell';
 

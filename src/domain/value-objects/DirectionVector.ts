@@ -1,14 +1,12 @@
 import { Direction } from './Direction';
 
-// Vector de desplazamiento (fila, columna) asociado a una dirección.
+/** Incremento de fila y columna asociado a una dirección. */
 export interface StepVector {
   rowStep: number;
   colStep: number;
 }
 
-// Traduce una Direction al incremento de coordenadas que representa en la matriz.
-// Único punto de verdad para esta conversión: antes estaba duplicada en
-// LevelActionService y LevelSolvabilityValidator.
+/** Traduce una Direction al desplazamiento en la matriz del tablero. */
 export function getStep(direction: Direction): StepVector {
   switch (direction) {
     case Direction.UP: return { rowStep: -1, colStep: 0 };

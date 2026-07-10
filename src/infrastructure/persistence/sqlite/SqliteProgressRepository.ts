@@ -22,8 +22,16 @@ interface ProgressRow {
  * versión in-memory) — SQL ya resuelve esa relación de forma más simple.
  */
 export class SqliteProgressRepository implements IProgressRepository {
+  /** @param db Conexión SQLite ya inicializada con el esquema de `progress`. */
   constructor(private readonly db: Database.Database) {}
 
+  /**
+   * Obtiene el progreso de un usuario en un nivel concreto.
+   *
+   * @param userId Identificador del jugador.
+   * @param levelId Identificador del nivel.
+   * @returns Entidad `PlayerProgress` o `null` si aún no hay registro.
+   */
   public async findByUserAndLevel(userId: string, levelId: string): Promise<PlayerProgress | null> {
     const row = this.db
       .prepare('SELECT * FROM progress WHERE userId = ? AND levelId = ?')
@@ -31,11 +39,22 @@ export class SqliteProgressRepository implements IProgressRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  /**
+   * Lista todo el progreso almacenado de un usuario en todos los niveles.
+   *
+   * @param userId Identificador del jugador.
+   * @returns Colección de registros de progreso (puede estar vacía).
+   */
   public async findAllByUser(userId: string): Promise<PlayerProgress[]> {
     const rows = this.db.prepare('SELECT * FROM progress WHERE userId = ?').all(userId) as ProgressRow[];
     return rows.map(row => this.toDomain(row));
   }
 
+  /**
+   * Inserta o actualiza el progreso de un par usuario-nivel.
+   *
+   * @param progress Entidad con las mejores métricas ya fusionadas por dominio.
+   */
   public async save(progress: PlayerProgress): Promise<void> {
     const id = progress.id || randomUUID();
     this.db
@@ -59,6 +78,13 @@ export class SqliteProgressRepository implements IProgressRepository {
       });
   }
 
+  /**
+   * Consulta el top de jugadores de un nivel con join contra `users`.
+   *
+   * @param levelId Nivel cuyo ranking se solicita.
+   * @param limit Cantidad máxima de entradas a devolver.
+   * @returns Entradas ordenadas por `highScore` descendente.
+   */
   public async getLeaderboardByLevel(levelId: string, limit: number): Promise<LeaderBoardEntry[]> {
     const rows = this.db
       .prepare(

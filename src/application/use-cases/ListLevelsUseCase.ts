@@ -9,6 +9,11 @@ export class ListLevelsUseCase {
     private readonly levelJsonMapper: LevelJsonMapper,
   ) {}
 
+  /**
+   * Devuelve el catálogo completo de niveles en formato de transporte.
+   *
+   * @returns Lista de `StructuredLevelJsonDto` listos para serializar en JSON.
+   */
   public async execute(): Promise<StructuredLevelJsonDto[]> {
     const levels = await this.levelRepository.listAll();
     return levels.map(level => this.levelJsonMapper.toDto(level));

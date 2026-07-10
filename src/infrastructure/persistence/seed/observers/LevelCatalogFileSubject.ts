@@ -16,6 +16,10 @@ export class LevelCatalogFileSubject {
   private readonly pendingTimers = new Map<string, NodeJS.Timeout>();
   private readonly observers: ILevelCatalogObserver[] = [];
 
+  /**
+   * @param levelsDir Directorio vigilado (típicamente `levels/` en la raíz del repo).
+   * @param debounceMs Retardo en ms para agrupar eventos duplicados del filesystem.
+   */
   constructor(
     private readonly levelsDir: string,
     private readonly debounceMs = 300,

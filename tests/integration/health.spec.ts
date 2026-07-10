@@ -2,7 +2,7 @@ import request from 'supertest';
 import { createServer } from '../../src/infrastructure/http/server';
 
 describe('GET /health', () => {
-  it('responde 200 con status ok', async () => {
+  it('should_respond_200_with_ok_status', async () => {
     const app = await createServer();
 
     const response = await request(app).get('/health');

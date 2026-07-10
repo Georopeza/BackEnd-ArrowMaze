@@ -27,6 +27,13 @@ export class UpsertLevelUseCase {
     private readonly levelJsonMapper: LevelJsonMapper,
   ) {}
 
+  /**
+   * Crea o actualiza un nivel tras validar que sea resoluble.
+   *
+   * @param dto Definición completa del nivel en formato wire.
+   * @returns DTO persistido (refleja el estado guardado en el repositorio).
+   * @throws LevelNotSolvableError si el tablero no admite una solución válida.
+   */
   public async execute(dto: StructuredLevelJsonDto): Promise<StructuredLevelJsonDto> {
     if (!this.solvabilityValidator.isPlayable(this.toSolvabilityDto(dto))) {
       throw new LevelNotSolvableError(dto.id);

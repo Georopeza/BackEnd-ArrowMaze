@@ -18,6 +18,13 @@ export class RegisterUserUseCase {
     private readonly passwordHasher: IPasswordHasher,
   ) {}
 
+  /**
+   * Registra un usuario nuevo si el username aún no está ocupado.
+   *
+   * @param dto Credenciales de registro validadas en la capa HTTP.
+   * @returns Entidad `User` persistida con hash de contraseña.
+   * @throws UserAlreadyExistsError si el username ya existe.
+   */
   public async execute(dto: RegisterUserDto): Promise<User> {
     const existing = await this.userRepository.findByUsername(dto.username);
     if (existing) {

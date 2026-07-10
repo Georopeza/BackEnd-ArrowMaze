@@ -8,6 +8,12 @@ const DEFAULT_LEADERBOARD_LIMIT = 10;
 export class GetLeaderboardUseCase {
   constructor(private readonly progressRepository: IProgressRepository) {}
 
+  /**
+   * Consulta el top de jugadores de un nivel ordenado por puntaje descendente.
+   *
+   * @param query Identificador del nivel y límite opcional de entradas.
+   * @returns Entradas del leaderboard con username y métricas de rendimiento.
+   */
   public async execute(query: LeaderboardQueryDto): Promise<LeaderBoardEntry[]> {
     const limit = query.limit ?? DEFAULT_LEADERBOARD_LIMIT;
     return this.progressRepository.getLeaderboardByLevel(query.levelId, limit);

@@ -4,19 +4,18 @@ import { LevelDefinition } from '../entities/LevelDefinition';
 import { Board } from '../aggregates/Board';
 import { LevelActionService } from '../services/LevelActionService';
 
-// Payload que espera este procesador: la posición del click sobre el tablero en vivo.
+/** Payload con la posición del click sobre el tablero. */
 export interface FireArrowActionPayload {
   row: number;
   col: number;
 }
 
-// Implementación concreta del Template Method (BaseLevelProcessor): dispara una flecha sobre
-// un Board en vivo, reutilizando LevelActionService para aplicar la Regla de Bloqueo/Despeje,
-// y usa Board.isSolved() para saber si el nivel ya fue ganado.
+/** Procesador concreto que dispara flechas sobre un Board en vivo. */
 export class FireArrowLevelProcessor extends BaseLevelProcessor {
   private readonly actionService = new LevelActionService();
   private lastActionSucceeded = false;
 
+  /** Vincula el nivel con el tablero jugable sobre el que actuar. */
   constructor(level: LevelDefinition, private readonly board: Board) {
     super(level);
   }
@@ -40,7 +39,7 @@ export class FireArrowLevelProcessor extends BaseLevelProcessor {
     return this.lastActionSucceeded ? 1 : 0;
   }
 
-  // Determina si el nivel ya está ganado (sin flechas restantes en el tablero).
+  /** Indica si el tablero ya no tiene flechas (nivel ganado). */
   public isLevelWon(): boolean {
     return this.board.isSolved();
   }
