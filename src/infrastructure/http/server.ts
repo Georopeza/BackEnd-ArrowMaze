@@ -14,6 +14,8 @@ import { errorHandlerMiddleware } from './middlewares/errorHandler.middleware';
 import { createAuthMiddleware } from './middlewares/auth.middleware';
 import { AppContainer, createContainer } from './container';
 import { seedLevelCatalog } from '../persistence/seed/seedLevelCatalog';
+import { startLevelCatalogWatcher } from '../persistence/seed/startLevelCatalogWatcher';
+import { LevelCatalogFileSubject } from '../persistence/seed/observers/LevelCatalogFileSubject';
 import openapiDocument from './openapi/openapi.json';
 
 /** Opciones de arranque del servidor (útiles en tests vs producción). */
@@ -23,6 +25,12 @@ export interface CreateServerOptions {
    * registrar rutas. Por defecto `false` para no alterar tests.
    */
   seedLevels?: boolean;
+
+  /**
+   * Si es `true`, vigila `levels/*.json` y sincroniza SQLite al detectar cambios
+   * (patrón Observer). Por defecto `false` en tests; `true` en `main.ts`.
+   */
+  watchLevelCatalog?: boolean;
 
   /**
    * Ruta del archivo SQLite. Por defecto `:memory:` (base efímera y aislada,
@@ -55,8 +63,19 @@ export async function createServer(
     console.log(`Level seed: ${result.seeded}/${result.expected} niveles cargados`);
   }
 
+  let levelCatalogWatcher: LevelCatalogFileSubject | null = null;
+  if (options.watchLevelCatalog) {
+    levelCatalogWatcher = startLevelCatalogWatcher(container);
+    // eslint-disable-next-line no-console
+    console.log('Level catalog watcher: observing levels/*.json for hot reload');
+  }
+
   const authMiddleware = createAuthMiddleware(container.tokenService);
   const app = express();
+
+  if (levelCatalogWatcher) {
+    app.locals.levelCatalogWatcher = levelCatalogWatcher;
+  }
 
   app.use(helmet());
   app.use(cors());

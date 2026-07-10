@@ -1,0 +1,15 @@
+{
+  "id": "level-11",
+  "levelNumber": 11,
+  "difficulty": "MEDIUM",
+  "maxMoves": 12,
+  "maxTimeInSeconds": 120,
+  "width": 4,
+  "height": 4,
+  "exit": { "row": 3, "col": 3 },
+  "walls": [{ "row": 2, "col": 1 }],
+  "arrows": [
+    { "id": "h1", "direction": "RIGHT", "head": { "row": 0, "col": 0 }, "body": [] },
+    { "id": "h2", "direction": "UP", "head": { "row": 3, "col": 2 }, "body": [] }
+  ]
+}
