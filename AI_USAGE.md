@@ -1011,3 +1011,57 @@ expect(session.token, fixture['token']);
 - Una prueba de contrato no necesita un framework dedicado para dar la garantía central que importa (ambos lados coinciden en la forma de los datos): un fixture compartido más pruebas que ejercitan el código de producción real de cada lado logra el mismo objetivo con mucho menos costo de adopción, al precio de sincronización manual entre repos en vez de automática.
 - Comparar **conjuntos de claves** (no valores exactos) en las pruebas del lado del backend es la forma correcta de verificar forma sin acoplar el test a datos específicos generados en cada corrida (usuarios, tokens, puntajes).
 - Documentar explícitamente por qué se descartó la herramienta recomendada por el enunciado (con la limitación técnica concreta que lo motivó) dentro del propio repositorio (`docs/contract/fixtures/README.md`) deja el razonamiento disponible para quien evalúe el proyecto, en vez de depender de que se explique solo verbalmente en la defensa.
+
+---
+
+## Consulta #23 — Fixture de `GET /levels`, validación de tipos con Zod, fixtures de error y verificación de sincronización en CI
+
+**Tarea o problema abordado.**
+
+Como refinamiento sobre la extensión de pruebas de contrato (Consulta #22), se pidieron cuatro mejoras puntuales: (1) un fixture compartido para `GET /levels` (un nivel de ejemplo del catálogo, distinto del fixture de `LevelJsonMapper` ya existente); (2) que las pruebas del lado del backend validaran **tipos**, no solo el conjunto de claves de las respuestas — hasta ahora, un campo con el nombre correcto pero el tipo equivocado habría pasado la comparación; (3) fixtures para los dos errores más comunes de la API (401 no autorizado, 409 usuario duplicado); (4) un script o chequeo en CI que compare los fixtures de contrato entre los dos repos por hash, pese a ser repositorios independientes sin pipeline compartido.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio, ejecución de la suite de tests y del script de sincronización (incluyendo una prueba deliberada de divergencia para confirmar que el script sí falla cuando corresponde).
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ahora: añadir fixture compartido para `GET /levels` (un nivel de ejemplo del catálogo). Validar tipos además de claves en el backend (p. ej. con Zod schemas para respuestas, no solo requests). Añadir fixtures de error: 401 Unauthorized, 409 UserAlreadyExists. Script o check en CI que compare hashes de fixtures entre repos (aunque sean repos separados).
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+```typescript
+// tests/support/contractSchemas.ts: schemas SOLO de test, .strict() rechaza
+// campos extra además de validar tipos.
+export const authLoginResponseSchema = z
+  .object({ token: z.string(), userId: z.string(), username: z.string() })
+  .strict();
+```
+
+```bash
+# scripts/check-contract-fixtures-sync.sh: usa un checkout hermano local si
+# existe, o clona el otro repo en CI; nunca hace fallar el build por un
+# problema de acceso, solo por una divergencia real de contenido.
+if ! git clone --depth 1 --branch "$OTHER_REPO_REF" "$OTHER_REPO_URL" "$OTHER_REPO_PATH"; then
+  echo "No se pudo clonar el repo frontend... Omitiendo verificación (no es un fallo)."
+  exit 0
+fi
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Fixtures nuevos | `docs/contract/fixtures/levels-get-response.json`, `error-401-unauthorized.json`, `error-409-user-already-exists.json` | Un nivel de ejemplo de `GET /levels`; sobre de error para 401 y 409 |
+| Schemas de tipo | `tests/support/contractSchemas.ts` | Un `z.object().strict()` por cada forma de respuesta (auth, progress, leaderboard, nivel, error) |
+| Prueba de contrato | `tests/integration/contractFixtures.spec.ts` | Reemplaza la comparación de solo-claves por `schema.parse()` sobre fixture y respuesta real; agrega casos para `GET /levels` (comparación exacta, no solo de forma, al ser datos controlados en el test) y para 401/409 |
+| Script de sincronización | `scripts/check-contract-fixtures-sync.sh` | Compara SHA-256 de cada fixture contra el repo frontend (checkout hermano en local, clon superficial en CI); falla solo ante una divergencia real de contenido |
+| CI | `.github/workflows/ci.yml` | Nuevo paso que corre el script tras la suite de tests |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (172/172 tests), y adicionalmente se probó el script de sincronización de forma manual introduciendo una divergencia deliberada en un fixture para confirmar que detecta el fallo (`exit 1`) antes de revertirla.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Comparar solo el conjunto de claves de una respuesta (Consulta #22) es más débil de lo que parece: no detecta un campo con el tipo equivocado. Validar con un schema de tipos (`.strict()` para además rechazar campos no documentados) es la forma correcta de que una prueba de contrato cumpla su propósito completo.
+- Un chequeo de sincronización entre dos repos independientes en CI debe decidir explícitamente cómo comportarse cuando **no puede** hacer la comparación (repo privado, sin red): fallar el build en ese caso penalizaría un problema de acceso ajeno al contenido de los fixtures; reportarlo y continuar es el comportamiento correcto para una red de seguridad adicional, no un gate obligatorio.
+- Probar el "camino de fallo" de un script de verificación (no solo el camino feliz) antes de darlo por terminado — en este caso, corromper temporalmente un fixture y confirmar que el script realmente devuelve `exit 1` — es la única forma de tener certeza de que la comprobación funciona, en vez de asumirlo por lectura del código.
