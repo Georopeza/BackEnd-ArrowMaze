@@ -961,3 +961,53 @@ const simpleLevel: StructuredLevelJsonDto = JSON.parse(fs.readFileSync(simpleLev
 - Un contrato compartido documentado no garantiza por sí solo que ambos lados se prueben contra los mismos datos: si cada repo mantiene su propia copia del fixture, pueden divergir en silencio, y de hecho ya habían divergido en este proyecto sin que ningún test lo señalara.
 - Leer el fixture de contrato desde un archivo compartido (en vez de embeberlo como literal en el test) convierte cualquier divergencia futura entre repos en un fallo de test explícito, en lugar de un supuesto implícito no verificado.
 - Al ser dos repositorios independientes sin pipeline compartido, la sincronización del fixture de contrato es manual; documentarlo explícitamente (README junto al fixture) es la única salvaguarda disponible sin invertir en infraestructura adicional (p. ej. un paquete o submódulo compartido).
+
+---
+
+## Consulta #22 — Extensión de pruebas de contrato a auth, progress y leaderboard (sin Pact)
+
+**Tarea o problema abordado.**
+
+El enunciado del proyecto recomienda explícitamente usar **Pact** (o herramienta equivalente) para pruebas de contrato consumer-driven entre el cliente del juego y el backend. Tras evaluar la recomendación, se confirmó que el patrón de fixture compartido ya aplicado al DTO de nivel (Consulta #21) cubría solo una de las cinco fronteras HTTP compartidas entre ambos repos. Se solicitó extender ese mismo patrón a las cuatro restantes — `POST /auth/register`, `POST /auth/login`, `POST /progress/sync` (request y response) y `GET /progress`, `GET /leaderboard/:levelId` — explícitamente **sin** adoptar Pact, y documentar el razonamiento detrás de esa decisión.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5. La decisión de no usar Pact se validó primero investigando el estado real del soporte de Pact para Dart/Flutter (sin SDK de consumidor oficial ni bien mantenido), y la extensión del patrón se diseñó en modo de planificación con aprobación explícita antes de implementar.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> [Sobre la recomendación de Pact del enunciado:] ¿Crees que lo estamos cumpliendo según lo realizado o hay que mejorarlo? [Tras la evaluación, con la brecha identificada de que solo se cubría el contrato de nivel:] Estoy de acuerdo, aplícalo a todos los endpoints compartidos como estás sugiriendo, sin la necesidad de usar Pact. Agrega ese razonamiento en la documentación.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se agregaron seis fixtures JSON compartidos (bit-a-bit idénticos en ambos repos) bajo `docs/contract/fixtures/`, y una prueba de contrato en cada repo por cada fixture que ejercita el **código real** de ese lado (no una re-implementación de su forma): en el backend, el esquema Zod real y rutas reales vía `supertest`; en el frontend, los clientes HTTP reales (`AuthApiClient`, `ProgressApiClient`, `LeaderboardApiClient`) contra un `MockHttpClient` que reenvía el fixture.
+
+```typescript
+// Backend: la respuesta REAL de una ruta debe tener las mismas claves que el fixture.
+const response = await request(app).post('/auth/login').send({ username, password });
+expectSameKeys(response.body, loadFixture('auth-login-response.json'));
+```
+
+```dart
+// Frontend: el cliente HTTP REAL debe parsear el fixture en el modelo esperado.
+final session = await api.login(username: 'ignored', password: 'ignored12');
+expect(session.token, fixture['token']);
+```
+
+| Componente | Ubicación | Rol |
+|------------|-----------|-----|
+| Fixtures | `docs/contract/fixtures/*.json` (6 archivos) | Forma compartida de cada frontera HTTP, idéntica en ambos repos |
+| Razonamiento documentado | `docs/contract/fixtures/README.md` | Por qué fixtures compartidos en vez de Pact, y la limitación aceptada |
+| Prueba de contrato (backend) | `tests/integration/contractFixtures.spec.ts` | Valida el fixture de request con el Zod schema real; compara claves de las respuestas reales (vía rutas HTTP reales) contra cada fixture de respuesta |
+| Prueba de contrato (frontend) | `test/infrastructure/http/contract_fixtures_test.dart` | Parsea cada fixture de respuesta con el cliente HTTP real; verifica que el cuerpo de la petición real de sync coincide con el fixture de request |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (169/169 tests) en el backend, y con `flutter analyze` y `flutter test` (104/104 tests) en el frontend, antes de commitear.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- No toda recomendación de la rúbrica aplica igual de bien a cualquier stack: Pact tiene soporte maduro para JVM/.NET/JS/Python/Go/Ruby, pero no para Dart/Flutter en el lado consumidor, lo que lo vuelve poco práctico como "primera opción" para este proyecto en particular sin construir tooling propio desproporcionado al alcance.
+- Una prueba de contrato no necesita un framework dedicado para dar la garantía central que importa (ambos lados coinciden en la forma de los datos): un fixture compartido más pruebas que ejercitan el código de producción real de cada lado logra el mismo objetivo con mucho menos costo de adopción, al precio de sincronización manual entre repos en vez de automática.
+- Comparar **conjuntos de claves** (no valores exactos) en las pruebas del lado del backend es la forma correcta de verificar forma sin acoplar el test a datos específicos generados en cada corrida (usuarios, tokens, puntajes).
+- Documentar explícitamente por qué se descartó la herramienta recomendada por el enunciado (con la limitación técnica concreta que lo motivó) dentro del propio repositorio (`docs/contract/fixtures/README.md`) deja el razonamiento disponible para quien evalúe el proyecto, en vez de depender de que se explique solo verbalmente en la defensa.
