@@ -863,3 +863,55 @@ export const DEFAULT_LEVELS_DIRECTORY = path.join(findRepoRoot(__dirname), 'leve
 
 - Calcular rutas de archivos relativas a `__dirname` contando un número fijo de niveles es frágil ante cualquier diferencia entre el árbol de fuentes y el árbol compilado (p. ej. `rootDir` en `tsconfig.json`); buscar un punto de referencia estable (`package.json`) es más robusto que contar directorios.
 - Un defecto corregido en una rama no se propaga automáticamente a otra que ya había divergido: conviene fusionar o reaplicar correcciones de infraestructura cuanto antes para evitar reproducir el mismo diagnóstico dos veces.
+
+---
+
+## Consulta #20 — Corrección de dos brechas de consistencia en el manejo de errores HTTP
+
+**Tarea o problema abordado.**
+
+Se solicitó validar el cumplimiento del criterio "manejo adecuado de errores HTTP y respuestas consistentes" sobre la API existente. La auditoría identificó una arquitectura de manejo de errores sólida (middleware centralizado, jerarquía de errores tipados, códigos de estado correctos, validación con Zod, cobertura de tests en las rutas de error existentes), pero con dos brechas concretas: (1) las rutas no reconocidas por ningún router caían en el 404 por defecto de Express (HTML/texto plano), rompiendo la forma `{ error: { message } }` que usa el resto de la API; (2) la rama de error 500 genérico enviaba siempre el mensaje real de la excepción al cliente, sin distinguir el entorno, exponiendo potencialmente detalles internos (p. ej. de la base de datos) en un despliegue de producción.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5. La auditoría inicial se delegó a un subagente de exploración de solo lectura; la corrección se implementó en una sesión de terminal con acceso de lectura/escritura al repositorio y ejecución de la suite de tests.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Valida lo siguiente por favor: manejo adecuado de errores HTTP y respuestas consistentes. [Tras el informe de auditoría, con dos brechas identificadas:] Corrige eso por favor.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+```typescript
+// src/infrastructure/http/middlewares/notFound.middleware.ts
+export function notFoundMiddleware(req: Request, res: Response): void {
+  res.status(404).json({ error: { message: `Route not found: ${req.method} ${req.originalUrl}` } });
+}
+```
+
+```typescript
+// src/infrastructure/http/middlewares/errorHandler.middleware.ts (rama 500)
+const isProduction = process.env.NODE_ENV === 'production';
+res.status(500).json({
+  error: {
+    message: isProduction ? 'Internal server error' : message,
+  },
+});
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Middleware nuevo | `notFound.middleware.ts` | Responde 404 con la misma forma `{ error: { message } }` para cualquier ruta no reconocida |
+| Registro | `server.ts` | `notFoundMiddleware` registrado tras todos los routers y antes de `errorHandlerMiddleware` |
+| Middleware existente | `errorHandler.middleware.ts` | Rama 500 sanitiza el mensaje según `NODE_ENV`; el mensaje real se sigue registrando en el log del servidor en todos los casos |
+| Tests | `tests/integration/notFound.spec.ts`, `tests/unit/infrastructure/errorHandler.middleware.spec.ts` | Verifican la forma del 404 y ambas ramas (dev/producción) de la sanitización del 500 |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (162/162 tests) antes de commitear.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un middleware de errores centralizado no cubre por sí solo las rutas que ningún router reconoce: Express requiere un middleware adicional explícito, registrado después de todas las rutas, para que también esas respuestas sigan el formato consistente del resto de la API.
+- Enviar `err.message` de una excepción genuina al cliente sin distinguir el entorno es un riesgo real de fuga de información en producción, incluso si nunca se envía el stack trace; sanitizar por `NODE_ENV` preserva la utilidad del mensaje detallado en desarrollo sin exponerlo en despliegues reales.
+- Una auditoría explícita ("valida X") antes de implementar evita corregir supuestos problemas que en realidad ya estaban bien resueltos, y concentra el esfuerzo en las brechas reales.
