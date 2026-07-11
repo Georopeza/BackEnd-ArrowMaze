@@ -44,6 +44,7 @@ export class LevelJsonMapper {
   public toLevelDefinition(dto: StructuredLevelJsonDto): LevelDefinition {
     const builder = new LevelBuilder()
       .withId(dto.id)
+      .withName(dto.name ?? dto.id)
       .withLevelNumber(dto.levelNumber)
       .withDifficulty(dto.difficulty as Difficulty)
       .withDimensions(dto.height, dto.width)
@@ -116,6 +117,7 @@ export class LevelJsonMapper {
 
     return {
       id: level.id,
+      name: level.name,
       levelNumber: level.levelNumber,
       difficulty: level.difficulty as LevelDifficultyDto,
       maxMoves: level.maxMoves,

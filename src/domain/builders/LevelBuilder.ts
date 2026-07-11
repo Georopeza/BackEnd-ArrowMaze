@@ -7,6 +7,7 @@ import { Difficulty, LevelDefinition } from '../entities/LevelDefinition';
 /** Builder para construir LevelDefinition de forma incremental. */
 export class LevelBuilder {
   private id = '';
+  private name = '';
   private levelNumber = 1;
   private difficulty: Difficulty = Difficulty.EASY;
   private board: Cell[][] = [];
@@ -16,6 +17,12 @@ export class LevelBuilder {
   /** Asigna el identificador del nivel. */
   public withId(id: string): this {
     this.id = id;
+    return this;
+  }
+
+  /** Asigna el nombre visible del nivel en catálogos y UI. */
+  public withName(name: string): this {
+    this.name = name;
     return this;
   }
 
@@ -77,6 +84,7 @@ export class LevelBuilder {
     }
     return new LevelDefinition(
       this.id,
+      this.name.trim() || this.id,
       this.levelNumber,
       this.difficulty,
       this.board,

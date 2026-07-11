@@ -14,7 +14,7 @@ describe('LevelDefinition - Constructor Invariants', () => {
   ];
 
   test('should_create_a_level_when_all_invariants_are_satisfied', () => {
-    const level = new LevelDefinition('level-1', 1, Difficulty.EASY, validBoard(), 10, 60);
+    const level = new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, validBoard(), 10, 60);
 
     expect(level.id).toBe('level-1');
     expect(level.board).toHaveLength(2);
@@ -22,7 +22,7 @@ describe('LevelDefinition - Constructor Invariants', () => {
 
   test('should_throw_an_error_when_the_board_is_empty', () => {
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, [], 10, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, [], 10, 60);
     }).toThrow('The board matrix cannot be empty');
   });
 
@@ -33,17 +33,17 @@ describe('LevelDefinition - Constructor Invariants', () => {
     ];
 
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, nonUniformBoard, 10, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, nonUniformBoard, 10, 60);
     }).toThrow('The board matrix must be uniform (all rows must have the same width)');
   });
 
   test('should_throw_an_error_when_maxMoves_or_maxTimeInSeconds_are_not_positive', () => {
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, validBoard(), 0, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, validBoard(), 0, 60);
     }).toThrow('Game limits (maxMoves and maxTimeInSeconds) must be greater than zero');
 
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, validBoard(), 10, 0);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, validBoard(), 10, 0);
     }).toThrow('Game limits (maxMoves and maxTimeInSeconds) must be greater than zero');
   });
 
@@ -53,7 +53,7 @@ describe('LevelDefinition - Constructor Invariants', () => {
     ];
 
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, boardWithoutExit, 10, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, boardWithoutExit, 10, 60);
     }).toThrow('Level board must contain at least one ExitCell');
   });
 
@@ -63,7 +63,7 @@ describe('LevelDefinition - Constructor Invariants', () => {
     ];
 
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, boardWithoutArrows, 10, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, boardWithoutArrows, 10, 60);
     }).toThrow('Level board must contain at least one ArrowCell to be playable');
   });
 
@@ -75,7 +75,7 @@ describe('LevelDefinition - Constructor Invariants', () => {
     ];
 
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, boardWithOrphanBody, 10, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, boardWithOrphanBody, 10, 60);
     }).toThrow('Every ArrowBodyCell must reference an existing ArrowCell arrowId');
   });
 
@@ -86,7 +86,7 @@ describe('LevelDefinition - Constructor Invariants', () => {
     ];
 
     expect(() => {
-      new LevelDefinition('level-1', 1, Difficulty.EASY, boardWithMatchingBody, 10, 60);
+      new LevelDefinition('level-1', 'Level 1', 1, Difficulty.EASY, boardWithMatchingBody, 10, 60);
     }).not.toThrow();
   });
 });

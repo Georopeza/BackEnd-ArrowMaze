@@ -105,6 +105,19 @@ describe('LevelJsonMapper', () => {
     expect((bodyCell as ArrowBodyCell).arrowId).toBe('f1');
   });
 
+  it('should_preserve_display_name_in_round_trip', () => {
+    const dtoWithName: StructuredLevelJsonDto = {
+      ...simpleLevel,
+      name: 'Simple One',
+    };
+
+    const level = mapper.toLevelDefinition(dtoWithName);
+    const roundTripped = mapper.toDto(level);
+
+    expect(level.name).toBe('Simple One');
+    expect(roundTripped.name).toBe('Simple One');
+  });
+
   it('should_round_trip_dto_via_toLevelDefinition_and_toDto', () => {
     // Act
     const level = mapper.toLevelDefinition(simpleLevel);

@@ -43,6 +43,8 @@ export interface StructuredArrowJsonDto {
  */
 export interface StructuredLevelJsonDto {
   id: string;
+  /** Nombre visible del nivel en la UI (p. ej. "Primer Contacto"). */
+  name?: string;
   levelNumber: number;
   difficulty: LevelDifficultyDto;
   maxMoves: number;
