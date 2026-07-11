@@ -3,7 +3,7 @@
   "name": "Punto de Quiebre",
   "levelNumber": 12,
   "difficulty": "MEDIUM",
-  "maxMoves": 11,
+  "maxMoves": 15,
   "maxTimeInSeconds": 140,
   "width": 9,
   "height": 9,

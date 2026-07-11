@@ -3,7 +3,7 @@
   "name": "Herradura de la Suerte",
   "levelNumber": 5,
   "difficulty": "MEDIUM",
-  "maxMoves": 8,
+  "maxMoves": 12,
   "maxTimeInSeconds": 90,
   "width": 6,
   "height": 8,

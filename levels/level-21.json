@@ -2,7 +2,7 @@
   "id": "level-21",
   "levelNumber": 21,
   "difficulty": "MEDIUM",
-  "maxMoves": 8,
+  "maxMoves": 9,
   "maxTimeInSeconds": 60,
   "width": 7,
   "height": 7,

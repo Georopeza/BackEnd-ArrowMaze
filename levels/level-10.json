@@ -3,7 +3,7 @@
   "name": "La Fortaleza",
   "levelNumber": 10,
   "difficulty": "MEDIUM",
-  "maxMoves": 11,
+  "maxMoves": 15,
   "maxTimeInSeconds": 140,
   "width": 7,
   "height": 7,

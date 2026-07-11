@@ -1065,3 +1065,59 @@ fi
 - Comparar solo el conjunto de claves de una respuesta (Consulta #22) es más débil de lo que parece: no detecta un campo con el tipo equivocado. Validar con un schema de tipos (`.strict()` para además rechazar campos no documentados) es la forma correcta de que una prueba de contrato cumpla su propósito completo.
 - Un chequeo de sincronización entre dos repos independientes en CI debe decidir explícitamente cómo comportarse cuando **no puede** hacer la comparación (repo privado, sin red): fallar el build en ese caso penalizaría un problema de acceso ajeno al contenido de los fixtures; reportarlo y continuar es el comportamiento correcto para una red de seguridad adicional, no un gate obligatorio.
 - Probar el "camino de fallo" de un script de verificación (no solo el camino feliz) antes de darlo por terminado — en este caso, corromper temporalmente un fixture y confirmar que el script realmente devuelve `exit 1` — es la única forma de tener certeza de que la comprobación funciona, en vez de asumirlo por lectura del código.
+
+## Consulta #24 — Balance de movimientos y tiempo por nivel en el catálogo
+
+**Tarea o problema abordado.**
+
+El usuario pidió revisar si la cantidad de movimientos permitidos (`maxMoves`) y el tiempo límite (`maxTimeInSeconds`) de los 22 niveles del catálogo estaban bien calibrados, señalando que algunos parecían muy ajustados y otros muy holgados.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio y ejecución de un script de análisis puntual (no incorporado al repositorio).
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ahora necesito tu ayuda para chequear la cantidad de movimientos y tiempo por nivel (algunos son muy ajustados y otros son muy holgados).
+>
+> Ajusta el tiempo de esos niveles que comentas, y en los niveles medium, déjales 5 movimientos de margen.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se escribió un script temporal (`node`, no parte del repositorio) que, para cada uno de los 22 niveles, calculó:
+- `optimalMoves` = cantidad de flechas (cada flecha exitosa se extrae una vez; ganar exige extraerlas todas).
+- Margen de movimientos = `maxMoves - optimalMoves`.
+- Tiempo esperado según la fórmula real del frontend (`LevelTimeLimitCalculator`: `optimalMoves * segundosPorMovimiento(dificultad) + 15`, acotado a `[30, 600]`) comparado contra el `maxTimeInSeconds` real de cada nivel.
+
+Hallazgos relevantes:
+- Los 9 niveles `MEDIUM` (5 al 12, y 21) tenían márgenes de movimiento inconsistentes entre sí, algunos con solo 1 movimiento de holgura.
+- Se confirmó en `lib/domain/game/game.dart:221` que el contador de movimientos se incrementa en **todo** intento (`performMove`), exitoso o bloqueado — es decir, un margen de movimiento bajo penaliza al jugador incluso por un solo intento fallido, no solo por ineficiencia real.
+- Los niveles `level-14` (HARD) y `level-19` (EXPERT) tenían un `maxTimeInSeconds` marcadamente más holgado que sus pares de la misma dificultad al comparar la razón tiempo/movimiento.
+
+Cambios aplicados en `levels/*.json`:
+
+| Nivel | Campo | Antes | Después |
+|-------|-------|-------|---------|
+| level-5 | `maxMoves` | 8 | 12 |
+| level-6 | `maxMoves` | 9 | 13 |
+| level-7 | `maxMoves` | 11 | 15 |
+| level-8 | `maxMoves` | 12 | 16 |
+| level-9 | `maxMoves` | 11 | 15 |
+| level-10 | `maxMoves` | 11 | 15 |
+| level-11 | `maxMoves` | 11 | 15 |
+| level-12 | `maxMoves` | 11 | 15 |
+| level-21 | `maxMoves` | 8 | 9 |
+| level-14 | `maxTimeInSeconds` | 220 | 160 |
+| level-19 | `maxTimeInSeconds` | 320 | 240 |
+
+Todos los niveles `MEDIUM` quedan con exactamente `optimalMoves + 5` movimientos de margen. Los niveles `level-14` y `level-19` quedan con una razón tiempo/movimiento consistente con sus pares `HARD`/`EXPERT`.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (172/172 tests) tras aplicar los 11 cambios, confirmando que el catálogo sigue cargando correctamente.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- El diseño de niveles no puede evaluarse mirando solo `maxMoves` en aislado: hay que cruzarlo contra `optimalMoves` (derivado del propio contenido del nivel) y contra el comportamiento real del contador de movimientos en el dominio del juego, no solo contra la intuición de "cuántas flechas hay".
+- Un margen de movimiento igual a cero es más severo de lo que parece a simple vista, porque el contador de movimientos penaliza intentos bloqueados, no solo decisiones subóptimas — un detalle de implementación que cambia por completo la evaluación de qué margen es "justo".
+- Quedó fuera de alcance de esta consulta —y pendiente de decisión del usuario— si conviene aplicar el mismo criterio de margen a los niveles `HARD`/`EXPERT` (13 al 20), que hoy en su mayoría tienen margen cero; no se modificó su `maxMoves` sin instrucción explícita.

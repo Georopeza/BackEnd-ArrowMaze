@@ -3,7 +3,7 @@
   "name": "Camino en Zigzag",
   "levelNumber": 6,
   "difficulty": "MEDIUM",
-  "maxMoves": 9,
+  "maxMoves": 13,
   "maxTimeInSeconds": 100,
   "width": 7,
   "height": 7,
