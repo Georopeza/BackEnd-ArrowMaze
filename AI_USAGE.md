@@ -1121,3 +1121,39 @@ Todos los niveles `MEDIUM` quedan con exactamente `optimalMoves + 5` movimientos
 - El diseño de niveles no puede evaluarse mirando solo `maxMoves` en aislado: hay que cruzarlo contra `optimalMoves` (derivado del propio contenido del nivel) y contra el comportamiento real del contador de movimientos en el dominio del juego, no solo contra la intuición de "cuántas flechas hay".
 - Un margen de movimiento igual a cero es más severo de lo que parece a simple vista, porque el contador de movimientos penaliza intentos bloqueados, no solo decisiones subóptimas — un detalle de implementación que cambia por completo la evaluación de qué margen es "justo".
 - Quedó fuera de alcance de esta consulta —y pendiente de decisión del usuario— si conviene aplicar el mismo criterio de margen a los niveles `HARD`/`EXPERT` (13 al 20), que hoy en su mayoría tienen margen cero; no se modificó su `maxMoves` sin instrucción explícita.
+
+## Consulta #25 — Validación estructural del catálogo de niveles y nombres faltantes
+
+**Tarea o problema abordado.**
+
+Dos pedidos relacionados: (1) validar si el JSON de los 22 niveles del catálogo tenía algún problema estructural; (2) corregir que el catálogo de niveles en la app mostrara nombres genéricos en vez de un nombre propio para algunos niveles.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio y al repositorio frontend, y un script de validación puntual en Node.js (no incorporado al repositorio) para auditar los 22 archivos.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ahora necesito que valides si el JSON de los niveles y veas si hay algún problema en ellos.
+>
+> También corrige que los idiomas mostrados en el catálogo de niveles en la app, sean nombres propios y no un nombre genérico que digan "nivel 1".
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se escribió un validador temporal que revisó, para cada uno de los 22 niveles: campos requeridos, límites de tablero, dificultad válida, ids duplicados (dentro y entre archivos), solapamiento silencioso de celdas (el `LevelBuilder` no lo detecta), `maxMoves >= optimalMoves`, y solvabilidad real vía backtracking (misma lógica que `LevelSolvabilityValidator.ts`). Un primer intento marcó ~27 falsos positivos por asumir que el cuerpo de una flecha debía ser una línea recta alineada con su `direction`; se confirmó contra el código real (`Arrow` entity del frontend, `LevelBuilder` del backend) que el diseño soporta formas en L/Z/"cortina" a propósito, y que el único requisito real es que cabeza+cuerpo formen una cadena conexa por adyacencia (para que el trazador del cliente dibuje una línea continua). Con esa corrección, los 22 niveles pasaron sin problemas — salvo un hallazgo de datos, no de estructura: `level-21.json` y `level-22.json` eran los únicos dos sin campo `"name"`, lo que hacía que el frontend (que ya prioriza `name` y solo cae al `id` como último recurso) mostrara su id crudo en el catálogo. Se agregó:
+
+```json
+// level-21.json
+"name": "Simetría Perfecta",
+// level-22.json
+"name": "Todos los Tamaños",
+```
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (172/172 tests) tras agregar los nombres, y con `flutter analyze`/`flutter test` (107/107 tests) en el repo frontend para confirmar que el catálogo ya no muestra el id crudo.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Ningún paso del arranque del servidor valida hoy el esquema, el solapamiento de celdas ni la solvabilidad de los niveles al cargarlos (`parseLevelJsonFile.ts` solo hace `JSON.parse`); un nivel corrupto se serviría igual sin aviso. Queda como mejora sugerida (no aplicada) convertir este validador en un test o chequeo de arranque/CI.
+- Antes de reportar un hallazgo de validación hay que confirmar la regla real del dominio, no la intuición: asumir que el cuerpo de una flecha debe alinearse con su dirección de disparo habría producido un reporte de "10 niveles rotos" completamente falso.
