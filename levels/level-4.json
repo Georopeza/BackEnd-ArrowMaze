@@ -1,0 +1,19 @@
+{
+  "id": "level-4",
+  "name": "La Escuadra",
+  "levelNumber": 4,
+  "difficulty": "EASY",
+  "maxMoves": 8,
+  "maxTimeInSeconds": 90,
+  "width": 6,
+  "height": 7,
+  "exit": { "row": 6, "col": 3 },
+  "arrows": [
+    { "id": "l1", "direction": "LEFT", "head": { "row": 0, "col": 0 }, "body": [{ "row": 0, "col": 1 }, { "row": 0, "col": 2 }] },
+    { "id": "l2", "direction": "UP", "head": { "row": 1, "col": 2 }, "body": [{ "row": 2, "col": 2 }, { "row": 3, "col": 2 }] },
+    { "id": "a3", "direction": "DOWN", "head": { "row": 6, "col": 5 }, "body": [{ "row": 5, "col": 5 }] },
+    { "id": "a4", "direction": "UP", "head": { "row": 0, "col": 5 }, "body": [{ "row": 1, "col": 5 }] },
+    { "id": "a5", "direction": "DOWN", "head": { "row": 6, "col": 1 }, "body": [{ "row": 5, "col": 1 }] },
+    { "id": "a6", "direction": "LEFT", "head": { "row": 3, "col": 0 }, "body": [{ "row": 3, "col": 1 }] }
+  ]
+}

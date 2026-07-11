@@ -10,10 +10,10 @@ const solvableLevelDto = {
   difficulty: 'EASY',
   maxMoves: 5,
   maxTimeInSeconds: 60,
-  width: 2,
+  width: 3,
   height: 1,
-  exit: { row: 0, col: 1 },
-  arrows: [{ id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [] }],
+  exit: { row: 0, col: 2 },
+  arrows: [{ id: 'f1', direction: 'RIGHT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] }],
 };
 
 /**

@@ -1,0 +1,21 @@
+{
+  "id": "level-6",
+  "name": "Camino en Zigzag",
+  "levelNumber": 6,
+  "difficulty": "MEDIUM",
+  "maxMoves": 9,
+  "maxTimeInSeconds": 100,
+  "width": 7,
+  "height": 7,
+  "exit": { "row": 6, "col": 1 },
+  "arrows": [
+    { "id": "s1", "direction": "LEFT", "head": { "row": 0, "col": 0 }, "body": [{ "row": 0, "col": 1 }, { "row": 0, "col": 2 }] },
+    { "id": "s2", "direction": "UP", "head": { "row": 1, "col": 2 }, "body": [{ "row": 2, "col": 2 }, { "row": 3, "col": 2 }] },
+    { "id": "s3", "direction": "LEFT", "head": { "row": 3, "col": 3 }, "body": [{ "row": 3, "col": 4 }, { "row": 3, "col": 5 }] },
+    { "id": "a4", "direction": "DOWN", "head": { "row": 6, "col": 0 }, "body": [{ "row": 5, "col": 0 }] },
+    { "id": "a5", "direction": "UP", "head": { "row": 0, "col": 6 }, "body": [{ "row": 1, "col": 6 }] },
+    { "id": "a6", "direction": "DOWN", "head": { "row": 6, "col": 6 }, "body": [{ "row": 5, "col": 6 }] },
+    { "id": "a7", "direction": "DOWN", "head": { "row": 6, "col": 4 }, "body": [{ "row": 5, "col": 4 }] },
+    { "id": "a8", "direction": "DOWN", "head": { "row": 6, "col": 2 }, "body": [{ "row": 5, "col": 2 }] }
+  ]
+}

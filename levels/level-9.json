@@ -1,0 +1,23 @@
+{
+  "id": "level-9",
+  "name": "Cruce de Caminos",
+  "levelNumber": 9,
+  "difficulty": "MEDIUM",
+  "maxMoves": 11,
+  "maxTimeInSeconds": 140,
+  "width": 9,
+  "height": 9,
+  "exit": { "row": 4, "col": 4 },
+  "arrows": [
+    { "id": "u1", "direction": "UP", "head": { "row": 0, "col": 4 }, "body": [{ "row": 1, "col": 4 }] },
+    { "id": "u2", "direction": "UP", "head": { "row": 2, "col": 4 }, "body": [{ "row": 3, "col": 4 }] },
+    { "id": "d1", "direction": "DOWN", "head": { "row": 8, "col": 4 }, "body": [{ "row": 7, "col": 4 }] },
+    { "id": "d2", "direction": "DOWN", "head": { "row": 6, "col": 4 }, "body": [{ "row": 5, "col": 4 }] },
+    { "id": "l1", "direction": "LEFT", "head": { "row": 4, "col": 0 }, "body": [{ "row": 4, "col": 1 }] },
+    { "id": "l2", "direction": "LEFT", "head": { "row": 4, "col": 2 }, "body": [{ "row": 4, "col": 3 }] },
+    { "id": "r1", "direction": "RIGHT", "head": { "row": 4, "col": 8 }, "body": [{ "row": 4, "col": 7 }] },
+    { "id": "r2", "direction": "RIGHT", "head": { "row": 4, "col": 6 }, "body": [{ "row": 4, "col": 5 }] },
+    { "id": "c1", "direction": "UP", "head": { "row": 0, "col": 0 }, "body": [{ "row": 1, "col": 0 }] },
+    { "id": "c2", "direction": "DOWN", "head": { "row": 8, "col": 8 }, "body": [{ "row": 7, "col": 8 }] }
+  ]
+}

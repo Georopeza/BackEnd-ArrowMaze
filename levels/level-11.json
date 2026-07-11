@@ -1,0 +1,23 @@
+{
+  "id": "level-11",
+  "name": "Viento de Molino",
+  "levelNumber": 11,
+  "difficulty": "MEDIUM",
+  "maxMoves": 11,
+  "maxTimeInSeconds": 140,
+  "width": 9,
+  "height": 9,
+  "exit": { "row": 4, "col": 4 },
+  "arrows": [
+    { "id": "b1o", "direction": "RIGHT", "head": { "row": 1, "col": 8 }, "body": [{ "row": 1, "col": 5 }, { "row": 1, "col": 6 }, { "row": 1, "col": 7 }] },
+    { "id": "b1i", "direction": "UP", "head": { "row": 2, "col": 5 }, "body": [{ "row": 3, "col": 5 }, { "row": 4, "col": 5 }] },
+    { "id": "b2o", "direction": "DOWN", "head": { "row": 8, "col": 7 }, "body": [{ "row": 5, "col": 7 }, { "row": 6, "col": 7 }, { "row": 7, "col": 7 }] },
+    { "id": "b2i", "direction": "RIGHT", "head": { "row": 5, "col": 6 }, "body": [{ "row": 5, "col": 5 }, { "row": 5, "col": 4 }] },
+    { "id": "b3o", "direction": "LEFT", "head": { "row": 7, "col": 0 }, "body": [{ "row": 7, "col": 3 }, { "row": 7, "col": 2 }, { "row": 7, "col": 1 }] },
+    { "id": "b3i", "direction": "DOWN", "head": { "row": 6, "col": 3 }, "body": [{ "row": 5, "col": 3 }, { "row": 4, "col": 3 }] },
+    { "id": "b4o", "direction": "UP", "head": { "row": 0, "col": 1 }, "body": [{ "row": 1, "col": 1 }, { "row": 2, "col": 1 }, { "row": 3, "col": 1 }] },
+    { "id": "b4i", "direction": "LEFT", "head": { "row": 3, "col": 2 }, "body": [{ "row": 3, "col": 3 }, { "row": 3, "col": 4 }] },
+    { "id": "h1", "direction": "UP", "head": { "row": 0, "col": 0 }, "body": [{ "row": 1, "col": 0 }] },
+    { "id": "h2", "direction": "DOWN", "head": { "row": 8, "col": 8 }, "body": [{ "row": 7, "col": 8 }] }
+  ]
+}

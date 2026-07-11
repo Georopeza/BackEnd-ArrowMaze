@@ -8,6 +8,7 @@ import {
 import { Direction } from '../../domain/value-objects/Direction';
 import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
 import { LevelNotSolvableError } from '../errors';
+import { validateArrowBodyLengths } from '../../domain/validators/arrowPlacementValidator';
 
 /**
  * Caso de uso: crear o actualizar la definición de un nivel.
@@ -35,6 +36,8 @@ export class UpsertLevelUseCase {
    * @throws LevelNotSolvableError si el tablero no admite una solución válida.
    */
   public async execute(dto: StructuredLevelJsonDto): Promise<StructuredLevelJsonDto> {
+    validateArrowBodyLengths(dto);
+
     if (!this.solvabilityValidator.isPlayable(this.toSolvabilityDto(dto))) {
       throw new LevelNotSolvableError(dto.id);
     }
