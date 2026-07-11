@@ -21,3 +21,6 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+
+      - name: Verify contract fixtures match the frontend repo
+        run: scripts/check-contract-fixtures-sync.sh
