@@ -814,3 +814,52 @@ Al probar en vivo con niveles reales se detectaron dos problemas de diseño, no 
 - Un límite de validación "copiado" de una limitación de otra capa (el pintor del cliente) en vez de derivado de la regla de negocio real es un error fácil de introducir sin notarlo — solo se detectó al probar con niveles reales de mayor tamaño.
 - El costo de un algoritmo de búsqueda (BFS/backtracking) depende de la estructura del nivel, no solo de la cantidad de flechas: conviene medir con datos reales (se hizo con un script de validación aislado) antes de asumir que "más grande implica más lento".
 - Duplicar una regla de negocio en dos repositorios (cliente y backend) con implementaciones de distinto costo computacional es un riesgo real de arquitectura distribuida; centralizar el cálculo en el lado que ya lo valida (el backend) elimina la duplicación y el riesgo de que diverjan.
+
+---
+
+## Consulta #19 — Corrección de la resolución de `levels/` en el build compilado (`dist/`)
+
+**Tarea o problema abordado.**
+
+El servidor arrancaba correctamente en desarrollo (`ts-node-dev` sobre `src/`) pero fallaba al ejecutar el build de producción con `Error: Level catalog directory not found: .../dist/levels`. La causa: `DEFAULT_LEVELS_DIRECTORY` calculaba la ruta del catálogo subiendo un número fijo de directorios desde `__dirname` (`path.resolve(__dirname, '../../../../levels')`), asumiendo siempre la profundidad de `src/infrastructure/persistence/seed/`. Como `tsc` compila con `rootDir: '.'`, el build conserva el prefijo `src/` bajo `dist/` (`dist/src/infrastructure/persistence/seed/`), añadiendo un nivel extra de profundidad que el cálculo fijo no contemplaba. El defecto se manifestó y se corrigió dos veces de forma independiente: primero en `main`, y posteriormente en `develop` (rama que había divergido de `main` antes de que el primer fix se fusionara).
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Claude Sonnet 5), sesión interactiva de terminal con acceso de lectura/escritura al repositorio y ejecución del servidor en modo desarrollo y compilado.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Actualiza los repos y vuelve a lanzar el proyecto. Al correr el backend compilado, el servidor no arranca: `Error: Level catalog directory not found`. Diagnostica la causa raíz y corrígela sin romper el modo de desarrollo.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se reemplazó el cálculo de profundidad fija por una búsqueda ascendente del directorio raíz del repositorio (ubicación de `package.json`), robusta frente a diferencias de profundidad entre `src/` y `dist/src/`:
+
+```typescript
+function findRepoRoot(startDir: string): string {
+  let dir = startDir;
+  while (!fs.existsSync(path.join(dir, 'package.json'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      throw new Error(`Could not locate repo root (package.json) from ${startDir}`);
+    }
+    dir = parent;
+  }
+  return dir;
+}
+
+export const DEFAULT_LEVELS_DIRECTORY = path.join(findRepoRoot(__dirname), 'levels');
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Resolución de ruta | `src/infrastructure/persistence/seed/loadLevelCatalogFromDirectory.ts` | `findRepoRoot()` reemplaza el conteo fijo de niveles de directorio |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; el fix se aplicó y verificó en ambas ramas (`main` y `develop`) tal como se generó.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Calcular rutas de archivos relativas a `__dirname` contando un número fijo de niveles es frágil ante cualquier diferencia entre el árbol de fuentes y el árbol compilado (p. ej. `rootDir` en `tsconfig.json`); buscar un punto de referencia estable (`package.json`) es más robusto que contar directorios.
+- Un defecto corregido en una rama no se propaga automáticamente a otra que ya había divergido: conviene fusionar o reaplicar correcciones de infraestructura cuanto antes para evitar reproducir el mismo diagnóstico dos veces.
