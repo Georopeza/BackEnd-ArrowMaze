@@ -915,3 +915,49 @@ res.status(500).json({
 - Un middleware de errores centralizado no cubre por sí solo las rutas que ningún router reconoce: Express requiere un middleware adicional explícito, registrado después de todas las rutas, para que también esas respuestas sigan el formato consistente del resto de la API.
 - Enviar `err.message` de una excepción genuina al cliente sin distinguir el entorno es un riesgo real de fuga de información en producción, incluso si nunca se envía el stack trace; sanitizar por `NODE_ENV` preserva la utilidad del mensaje detallado en desarrollo sin exponerlo en despliegues reales.
 - Una auditoría explícita ("valida X") antes de implementar evita corregir supuestos problemas que en realidad ya estaban bien resueltos, y concentra el esfuerzo en las brechas reales.
+
+---
+
+## Consulta #21 — Prueba de contrato del DTO de nivel contra el fixture compartido con el frontend
+
+**Tarea o problema abordado.**
+
+El equipo preguntó qué es una prueba de contrato y dónde aplicarla en el proyecto. El backend y el frontend ya comparten un contrato explícito de nivel (`docs/contract/level.contract.ts` ↔ `lib/contract/level_contract.dart`), pero ninguna prueba lo verificaba de punta a punta: cada repo probaba su propio mapeo contra su propia copia del fixture `docs/levels/simple-1.json`, y ese archivo **no existía en el backend** — solo en el frontend. Al investigar, se confirmó que el objeto de prueba embebido en `LevelJsonMapper.spec.ts` ya había divergido del contrato real vigente: declaraba `height: 5` (el valor correcto es `6`) y una flecha (`f4`) con 0 celdas de cuerpo, forma que el analizador del DTO en el frontend rechaza explícitamente por la regla de mínimo 1 celda de cuerpo por flecha. En otras palabras, el backend probaba su mapeo contra un nivel que el frontend real ya no aceptaría.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5. La exploración del contrato compartido y de las fronteras de forma entre ambos repos se delegó a un subagente de solo lectura; el diseño de la solución se validó en modo de planificación con aprobación explícita antes de implementar.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> ¿Qué es una prueba de contrato? ¿Y dónde lo podríamos aplicar según este proyecto? [Tras la propuesta, acotando el alcance:] Solo aplica el de `level.contract.ts` y `level_contract.dart`.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se agregó `docs/levels/simple-1.json` al backend como copia idéntica del mismo archivo en el repo frontend, y se reemplazó el objeto embebido de `LevelJsonMapper.spec.ts` por una lectura de ese fixture desde disco, de modo que el test ejercita el mapeo real contra el mismo JSON que usa el frontend, no contra una copia que puede desincronizarse silenciosamente.
+
+```typescript
+// Antes: objeto literal embebido, desincronizado del contrato real sin que
+// ningún test lo detectara.
+const simpleLevel: StructuredLevelJsonDto = { /* ...height: 5, f4 sin cuerpo... */ };
+
+// Después: se lee el fixture compartido con el frontend desde disco.
+const simpleLevelPath = path.join(__dirname, '../../../docs/levels/simple-1.json');
+const simpleLevel: StructuredLevelJsonDto = JSON.parse(fs.readFileSync(simpleLevelPath, 'utf-8'));
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Fixture | `docs/levels/simple-1.json` (nuevo) | Copia idéntica del fixture del repo frontend |
+| Documentación | `docs/levels/README.md` (nuevo) | Nota de mantenimiento: debe permanecer idéntico en ambos repos |
+| Prueba de contrato | `tests/unit/infrastructure/LevelJsonMapper.spec.ts` | Lee el fixture desde disco en vez de un literal embebido; aserción de altura del tablero corregida de 5 a 6 |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (162/162 tests) en el backend, y con `flutter test` (99/99 tests) en el frontend, antes de commitear.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un contrato compartido documentado no garantiza por sí solo que ambos lados se prueben contra los mismos datos: si cada repo mantiene su propia copia del fixture, pueden divergir en silencio, y de hecho ya habían divergido en este proyecto sin que ningún test lo señalara.
+- Leer el fixture de contrato desde un archivo compartido (en vez de embeberlo como literal en el test) convierte cualquier divergencia futura entre repos en un fallo de test explícito, en lugar de un supuesto implícito no verificado.
+- Al ser dos repositorios independientes sin pipeline compartido, la sincronización del fixture de contrato es manual; documentarlo explícitamente (README junto al fixture) es la única salvaguarda disponible sin invertir en infraestructura adicional (p. ej. un paquete o submódulo compartido).
