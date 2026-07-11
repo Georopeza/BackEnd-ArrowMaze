@@ -4,12 +4,30 @@ import path from 'path';
 import { StructuredLevelJsonDto } from '../../../../docs/contract/level.contract';
 
 /**
- * Ruta por defecto del directorio de niveles seed (`levels/` en la raíz del repo).
+ * Sube desde [startDir] hasta encontrar un directorio con `package.json`
+ * (raíz del repo).
  *
- * Resuelve desde `dist/infrastructure/persistence/seed/` o `src/...` hacia arriba
- * cuatro niveles hasta la raíz del proyecto.
+ * Subir un número fijo de niveles desde `__dirname` es frágil: en modo
+ * desarrollo (`ts-node-dev` sobre `src/`) hacen falta 4 niveles, pero en el
+ * build compilado (`dist/src/...`, porque `rootDir` es `.` y por eso `tsc`
+ * conserva el prefijo `src/`) hacen falta 5 — la constante original solo
+ * contaba 4 y por eso `dist/levels` (inexistente) fallaba en producción.
+ * Buscar `package.json` funciona igual en ambos casos.
  */
-export const DEFAULT_LEVELS_DIRECTORY = path.resolve(__dirname, '../../../../levels');
+function findRepoRoot(startDir: string): string {
+  let dir = startDir;
+  while (!fs.existsSync(path.join(dir, 'package.json'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      throw new Error(`Could not locate repo root (package.json) from ${startDir}`);
+    }
+    dir = parent;
+  }
+  return dir;
+}
+
+/** Ruta por defecto del directorio de niveles seed (`levels/` en la raíz del repo). */
+export const DEFAULT_LEVELS_DIRECTORY = path.join(findRepoRoot(__dirname), 'levels');
 
 /**
  * Carga el catálogo seed leyendo todos los archivos `*.json` de [levelsDir].
