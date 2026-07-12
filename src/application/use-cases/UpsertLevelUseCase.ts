@@ -1,5 +1,5 @@
 import { ILevelRepository } from '../../domain/repositories/ILevelRepository';
-import { LevelJsonMapper } from '../../infrastructure/mappers/LevelJsonMapper';
+import { ILevelJsonMapper } from '../ports/ILevelJsonMapper';
 import {
   ArrowPiece,
   LevelSolvabilityValidator,
@@ -25,7 +25,7 @@ export class UpsertLevelUseCase {
 
   constructor(
     private readonly levelRepository: ILevelRepository,
-    private readonly levelJsonMapper: LevelJsonMapper,
+    private readonly levelJsonMapper: ILevelJsonMapper,
   ) {}
 
   /**

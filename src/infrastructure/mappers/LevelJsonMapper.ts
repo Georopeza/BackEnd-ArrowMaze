@@ -13,6 +13,7 @@ import {
   StructuredArrowJsonDto,
   StructuredLevelJsonDto,
 } from '../../../docs/contract/level.contract';
+import { ILevelJsonMapper } from '../../application/ports/ILevelJsonMapper';
 
 /**
  * Traduce el contrato compartido `StructuredLevelJsonDto` (wire format
@@ -21,8 +22,10 @@ import {
  *
  * Vive en infraestructura (no en dominio) porque conoce la forma exacta
  * del JSON de transporte; el dominio no debe saber que ese formato existe.
+ * Implementa el puerto `ILevelJsonMapper` para que los casos de uso
+ * dependan de la interfaz, no de esta clase concreta (DIP).
  */
-export class LevelJsonMapper {
+export class LevelJsonMapper implements ILevelJsonMapper {
   private readonly cellFactory: CellFactory;
 
   /**

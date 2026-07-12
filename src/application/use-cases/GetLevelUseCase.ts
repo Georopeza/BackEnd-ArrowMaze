@@ -1,5 +1,5 @@
 import { ILevelRepository } from '../../domain/repositories/ILevelRepository';
-import { LevelJsonMapper } from '../../infrastructure/mappers/LevelJsonMapper';
+import { ILevelJsonMapper } from '../ports/ILevelJsonMapper';
 import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
 import { LevelNotFoundError } from '../errors';
 
@@ -7,7 +7,7 @@ import { LevelNotFoundError } from '../errors';
 export class GetLevelUseCase {
   constructor(
     private readonly levelRepository: ILevelRepository,
-    private readonly levelJsonMapper: LevelJsonMapper,
+    private readonly levelJsonMapper: ILevelJsonMapper,
   ) {}
 
   /**
