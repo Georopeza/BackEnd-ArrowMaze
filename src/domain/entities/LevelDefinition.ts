@@ -23,6 +23,7 @@ export interface IScoreStrategy {
 /** Definición inmutable de un nivel con tablero, límites y dificultad. */
 export class LevelDefinition {
   public readonly id: string;
+  public readonly name: string;
   public readonly levelNumber: number;
   public readonly difficulty: Difficulty;
   public readonly board: Cell[][];
@@ -32,6 +33,7 @@ export class LevelDefinition {
   /** Valida invariantes del tablero y límites de juego al construir el nivel. */
   constructor(
     id: string,
+    name: string,
     levelNumber: number,
     difficulty: Difficulty,
     board: Cell[][],
@@ -83,6 +85,7 @@ export class LevelDefinition {
     }
 
     this.id = id;
+    this.name = name;
     this.levelNumber = levelNumber;
     this.difficulty = difficulty;
     this.board = board;

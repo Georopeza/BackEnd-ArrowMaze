@@ -3,7 +3,7 @@
   "name": "Nudo Triple",
   "levelNumber": 8,
   "difficulty": "MEDIUM",
-  "maxMoves": 12,
+  "maxMoves": 16,
   "maxTimeInSeconds": 140,
   "width": 9,
   "height": 9,

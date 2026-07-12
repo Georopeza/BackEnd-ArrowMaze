@@ -6,12 +6,24 @@ import { StructuredLevelJsonDto } from '../../../../docs/contract/level.contract
 import { parseLevelJsonFile } from './parseLevelJsonFile';
 import { DEFAULT_LEVELS_DIRECTORY } from './loadLevelCatalogFromDirectory';
 
+/** Un archivo de nivel que no pudo sincronizarse (parseo o regla de dominio, p. ej. no resoluble). */
+export interface SyncLevelCatalogFailure {
+  /** Ruta absoluta del archivo que falló. */
+  filePath: string;
+  /** Solo el nombre de archivo, para logs legibles. */
+  fileName: string;
+  /** Mensaje del error (parseo o `LevelNotSolvableError`, etc.). */
+  message: string;
+}
+
 /** Resultado de sincronizar uno o varios archivos del catálogo con el repositorio. */
 export interface SyncLevelCatalogResult {
   /** Cantidad de niveles upsertados correctamente en esta ejecución. */
   synced: number;
   /** Identificadores de los niveles sincronizados. */
   levelIds: string[];
+  /** Archivos que fallaron al parsear o validar; no interrumpen la sincronización del resto. */
+  failed: SyncLevelCatalogFailure[];
 }
 
 /**
@@ -54,10 +66,18 @@ export async function upsertLevelFromFile(
 /**
  * Sincroniza todos los JSON de [levelsDir] con el repositorio (seed / recarga completa).
  *
+ * Resiliente por archivo: un nivel individual que falle al parsear o que no
+ * sea resoluble (`LevelNotSolvableError`) se registra en `failed` y se
+ * omite, pero no interrumpe la sincronización de los demás archivos — el
+ * mismo criterio que ya aplica el watcher de hot-reload
+ * (`LevelCatalogFileSubject.notifyObservers`). Antes, un solo nivel roto
+ * abortaba el arranque completo del servidor y dejaba sin servicio incluso
+ * a los niveles válidos; ver `AI_USAGE.md` para el caso que motivó el cambio.
+ *
  * @param container Composition root ya construido.
  * @param levelsDir Carpeta del catálogo; por defecto [DEFAULT_LEVELS_DIRECTORY].
- * @returns Cantidad de niveles sincronizados e ids afectados.
- * @throws Error si el directorio está vacío o algún upsert falla.
+ * @returns Cantidad de niveles sincronizados, sus ids, y la lista de archivos fallidos.
+ * @throws Error si el directorio no existe o está vacío (error de configuración, no de contenido).
  */
 export async function syncLevelCatalogFromDirectory(
   container: AppContainer,
@@ -70,11 +90,19 @@ export async function syncLevelCatalogFromDirectory(
   }
 
   const levelIds: string[] = [];
+  const failed: SyncLevelCatalogFailure[] = [];
 
   for (const filePath of files) {
-    const saved = await upsertLevelFromFile(container, filePath);
-    levelIds.push(saved.id);
+    try {
+      const saved = await upsertLevelFromFile(container, filePath);
+      levelIds.push(saved.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failed.push({ filePath, fileName: path.basename(filePath), message });
+      // eslint-disable-next-line no-console
+      console.error(`Level catalog seed: skipping "${path.basename(filePath)}" — ${message}`);
+    }
   }
 
-  return { synced: levelIds.length, levelIds };
+  return { synced: levelIds.length, levelIds, failed };
 }

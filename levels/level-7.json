@@ -3,7 +3,7 @@
   "name": "Encrucijada",
   "levelNumber": 7,
   "difficulty": "MEDIUM",
-  "maxMoves": 11,
+  "maxMoves": 15,
   "maxTimeInSeconds": 120,
   "width": 8,
   "height": 8,

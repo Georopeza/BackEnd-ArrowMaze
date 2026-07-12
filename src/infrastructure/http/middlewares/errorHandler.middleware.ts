@@ -13,8 +13,11 @@ import { ApplicationError } from '../../../application/errors';
  * `statusCode` que ya trae consigo — los casos de uso no conocen HTTP, pero
  * sí saben si algo es "no encontrado", "conflicto", etc. Un `ZodError` (body
  * de request inválido) se traduce a 400 con el detalle de qué campo falló.
- * Cualquier otro error (de dominio o inesperado) se trata como 500 sin
- * filtrar detalles internos al cliente.
+ * Cualquier otro error (de dominio o inesperado) se trata como 500; el
+ * mensaje real de la excepción se registra en el log del servidor pero solo
+ * se envía al cliente fuera de producción (`NODE_ENV !== 'production'`), para
+ * no filtrar detalles internos (p. ej. de la base de datos) en despliegues
+ * reales.
  *
  * Debe registrarse al final de la cadena de middlewares/rutas de Express.
  */
@@ -35,9 +38,10 @@ export function errorHandlerMiddleware(err: unknown, req: Request, res: Response
     return;
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
   res.status(500).json({
     error: {
-      message,
+      message: isProduction ? 'Internal server error' : message,
     },
   });
 }

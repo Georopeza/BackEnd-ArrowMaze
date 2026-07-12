@@ -4,7 +4,7 @@
   "levelNumber": 14,
   "difficulty": "HARD",
   "maxMoves": 14,
-  "maxTimeInSeconds": 220,
+  "maxTimeInSeconds": 160,
   "width": 9,
   "height": 16,
   "exit": { "row": 11, "col": 4 },

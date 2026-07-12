@@ -814,3 +814,397 @@ Al probar en vivo con niveles reales se detectaron dos problemas de diseño, no 
 - Un límite de validación "copiado" de una limitación de otra capa (el pintor del cliente) en vez de derivado de la regla de negocio real es un error fácil de introducir sin notarlo — solo se detectó al probar con niveles reales de mayor tamaño.
 - El costo de un algoritmo de búsqueda (BFS/backtracking) depende de la estructura del nivel, no solo de la cantidad de flechas: conviene medir con datos reales (se hizo con un script de validación aislado) antes de asumir que "más grande implica más lento".
 - Duplicar una regla de negocio en dos repositorios (cliente y backend) con implementaciones de distinto costo computacional es un riesgo real de arquitectura distribuida; centralizar el cálculo en el lado que ya lo valida (el backend) elimina la duplicación y el riesgo de que diverjan.
+
+---
+
+## Consulta #19 — Corrección de la resolución de `levels/` en el build compilado (`dist/`)
+
+**Tarea o problema abordado.**
+
+El servidor arrancaba correctamente en desarrollo (`ts-node-dev` sobre `src/`) pero fallaba al ejecutar el build de producción con `Error: Level catalog directory not found: .../dist/levels`. La causa: `DEFAULT_LEVELS_DIRECTORY` calculaba la ruta del catálogo subiendo un número fijo de directorios desde `__dirname` (`path.resolve(__dirname, '../../../../levels')`), asumiendo siempre la profundidad de `src/infrastructure/persistence/seed/`. Como `tsc` compila con `rootDir: '.'`, el build conserva el prefijo `src/` bajo `dist/` (`dist/src/infrastructure/persistence/seed/`), añadiendo un nivel extra de profundidad que el cálculo fijo no contemplaba. El defecto se manifestó y se corrigió dos veces de forma independiente: primero en `main`, y posteriormente en `develop` (rama que había divergido de `main` antes de que el primer fix se fusionara).
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Claude Sonnet 5), sesión interactiva de terminal con acceso de lectura/escritura al repositorio y ejecución del servidor en modo desarrollo y compilado.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Actualiza los repos y vuelve a lanzar el proyecto. Al correr el backend compilado, el servidor no arranca: `Error: Level catalog directory not found`. Diagnostica la causa raíz y corrígela sin romper el modo de desarrollo.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se reemplazó el cálculo de profundidad fija por una búsqueda ascendente del directorio raíz del repositorio (ubicación de `package.json`), robusta frente a diferencias de profundidad entre `src/` y `dist/src/`:
+
+```typescript
+function findRepoRoot(startDir: string): string {
+  let dir = startDir;
+  while (!fs.existsSync(path.join(dir, 'package.json'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      throw new Error(`Could not locate repo root (package.json) from ${startDir}`);
+    }
+    dir = parent;
+  }
+  return dir;
+}
+
+export const DEFAULT_LEVELS_DIRECTORY = path.join(findRepoRoot(__dirname), 'levels');
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Resolución de ruta | `src/infrastructure/persistence/seed/loadLevelCatalogFromDirectory.ts` | `findRepoRoot()` reemplaza el conteo fijo de niveles de directorio |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; el fix se aplicó y verificó en ambas ramas (`main` y `develop`) tal como se generó.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Calcular rutas de archivos relativas a `__dirname` contando un número fijo de niveles es frágil ante cualquier diferencia entre el árbol de fuentes y el árbol compilado (p. ej. `rootDir` en `tsconfig.json`); buscar un punto de referencia estable (`package.json`) es más robusto que contar directorios.
+- Un defecto corregido en una rama no se propaga automáticamente a otra que ya había divergido: conviene fusionar o reaplicar correcciones de infraestructura cuanto antes para evitar reproducir el mismo diagnóstico dos veces.
+
+---
+
+## Consulta #20 — Corrección de dos brechas de consistencia en el manejo de errores HTTP
+
+**Tarea o problema abordado.**
+
+Se solicitó validar el cumplimiento del criterio "manejo adecuado de errores HTTP y respuestas consistentes" sobre la API existente. La auditoría identificó una arquitectura de manejo de errores sólida (middleware centralizado, jerarquía de errores tipados, códigos de estado correctos, validación con Zod, cobertura de tests en las rutas de error existentes), pero con dos brechas concretas: (1) las rutas no reconocidas por ningún router caían en el 404 por defecto de Express (HTML/texto plano), rompiendo la forma `{ error: { message } }` que usa el resto de la API; (2) la rama de error 500 genérico enviaba siempre el mensaje real de la excepción al cliente, sin distinguir el entorno, exponiendo potencialmente detalles internos (p. ej. de la base de datos) en un despliegue de producción.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5. La auditoría inicial se delegó a un subagente de exploración de solo lectura; la corrección se implementó en una sesión de terminal con acceso de lectura/escritura al repositorio y ejecución de la suite de tests.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Valida lo siguiente por favor: manejo adecuado de errores HTTP y respuestas consistentes. [Tras el informe de auditoría, con dos brechas identificadas:] Corrige eso por favor.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+```typescript
+// src/infrastructure/http/middlewares/notFound.middleware.ts
+export function notFoundMiddleware(req: Request, res: Response): void {
+  res.status(404).json({ error: { message: `Route not found: ${req.method} ${req.originalUrl}` } });
+}
+```
+
+```typescript
+// src/infrastructure/http/middlewares/errorHandler.middleware.ts (rama 500)
+const isProduction = process.env.NODE_ENV === 'production';
+res.status(500).json({
+  error: {
+    message: isProduction ? 'Internal server error' : message,
+  },
+});
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Middleware nuevo | `notFound.middleware.ts` | Responde 404 con la misma forma `{ error: { message } }` para cualquier ruta no reconocida |
+| Registro | `server.ts` | `notFoundMiddleware` registrado tras todos los routers y antes de `errorHandlerMiddleware` |
+| Middleware existente | `errorHandler.middleware.ts` | Rama 500 sanitiza el mensaje según `NODE_ENV`; el mensaje real se sigue registrando en el log del servidor en todos los casos |
+| Tests | `tests/integration/notFound.spec.ts`, `tests/unit/infrastructure/errorHandler.middleware.spec.ts` | Verifican la forma del 404 y ambas ramas (dev/producción) de la sanitización del 500 |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (162/162 tests) antes de commitear.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un middleware de errores centralizado no cubre por sí solo las rutas que ningún router reconoce: Express requiere un middleware adicional explícito, registrado después de todas las rutas, para que también esas respuestas sigan el formato consistente del resto de la API.
+- Enviar `err.message` de una excepción genuina al cliente sin distinguir el entorno es un riesgo real de fuga de información en producción, incluso si nunca se envía el stack trace; sanitizar por `NODE_ENV` preserva la utilidad del mensaje detallado en desarrollo sin exponerlo en despliegues reales.
+- Una auditoría explícita ("valida X") antes de implementar evita corregir supuestos problemas que en realidad ya estaban bien resueltos, y concentra el esfuerzo en las brechas reales.
+
+---
+
+## Consulta #21 — Prueba de contrato del DTO de nivel contra el fixture compartido con el frontend
+
+**Tarea o problema abordado.**
+
+El equipo preguntó qué es una prueba de contrato y dónde aplicarla en el proyecto. El backend y el frontend ya comparten un contrato explícito de nivel (`docs/contract/level.contract.ts` ↔ `lib/contract/level_contract.dart`), pero ninguna prueba lo verificaba de punta a punta: cada repo probaba su propio mapeo contra su propia copia del fixture `docs/levels/simple-1.json`, y ese archivo **no existía en el backend** — solo en el frontend. Al investigar, se confirmó que el objeto de prueba embebido en `LevelJsonMapper.spec.ts` ya había divergido del contrato real vigente: declaraba `height: 5` (el valor correcto es `6`) y una flecha (`f4`) con 0 celdas de cuerpo, forma que el analizador del DTO en el frontend rechaza explícitamente por la regla de mínimo 1 celda de cuerpo por flecha. En otras palabras, el backend probaba su mapeo contra un nivel que el frontend real ya no aceptaría.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5. La exploración del contrato compartido y de las fronteras de forma entre ambos repos se delegó a un subagente de solo lectura; el diseño de la solución se validó en modo de planificación con aprobación explícita antes de implementar.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> ¿Qué es una prueba de contrato? ¿Y dónde lo podríamos aplicar según este proyecto? [Tras la propuesta, acotando el alcance:] Solo aplica el de `level.contract.ts` y `level_contract.dart`.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se agregó `docs/levels/simple-1.json` al backend como copia idéntica del mismo archivo en el repo frontend, y se reemplazó el objeto embebido de `LevelJsonMapper.spec.ts` por una lectura de ese fixture desde disco, de modo que el test ejercita el mapeo real contra el mismo JSON que usa el frontend, no contra una copia que puede desincronizarse silenciosamente.
+
+```typescript
+// Antes: objeto literal embebido, desincronizado del contrato real sin que
+// ningún test lo detectara.
+const simpleLevel: StructuredLevelJsonDto = { /* ...height: 5, f4 sin cuerpo... */ };
+
+// Después: se lee el fixture compartido con el frontend desde disco.
+const simpleLevelPath = path.join(__dirname, '../../../docs/levels/simple-1.json');
+const simpleLevel: StructuredLevelJsonDto = JSON.parse(fs.readFileSync(simpleLevelPath, 'utf-8'));
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Fixture | `docs/levels/simple-1.json` (nuevo) | Copia idéntica del fixture del repo frontend |
+| Documentación | `docs/levels/README.md` (nuevo) | Nota de mantenimiento: debe permanecer idéntico en ambos repos |
+| Prueba de contrato | `tests/unit/infrastructure/LevelJsonMapper.spec.ts` | Lee el fixture desde disco en vez de un literal embebido; aserción de altura del tablero corregida de 5 a 6 |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (162/162 tests) en el backend, y con `flutter test` (99/99 tests) en el frontend, antes de commitear.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un contrato compartido documentado no garantiza por sí solo que ambos lados se prueben contra los mismos datos: si cada repo mantiene su propia copia del fixture, pueden divergir en silencio, y de hecho ya habían divergido en este proyecto sin que ningún test lo señalara.
+- Leer el fixture de contrato desde un archivo compartido (en vez de embeberlo como literal en el test) convierte cualquier divergencia futura entre repos en un fallo de test explícito, en lugar de un supuesto implícito no verificado.
+- Al ser dos repositorios independientes sin pipeline compartido, la sincronización del fixture de contrato es manual; documentarlo explícitamente (README junto al fixture) es la única salvaguarda disponible sin invertir en infraestructura adicional (p. ej. un paquete o submódulo compartido).
+
+---
+
+## Consulta #22 — Extensión de pruebas de contrato a auth, progress y leaderboard (sin Pact)
+
+**Tarea o problema abordado.**
+
+El enunciado del proyecto recomienda explícitamente usar **Pact** (o herramienta equivalente) para pruebas de contrato consumer-driven entre el cliente del juego y el backend. Tras evaluar la recomendación, se confirmó que el patrón de fixture compartido ya aplicado al DTO de nivel (Consulta #21) cubría solo una de las cinco fronteras HTTP compartidas entre ambos repos. Se solicitó extender ese mismo patrón a las cuatro restantes — `POST /auth/register`, `POST /auth/login`, `POST /progress/sync` (request y response) y `GET /progress`, `GET /leaderboard/:levelId` — explícitamente **sin** adoptar Pact, y documentar el razonamiento detrás de esa decisión.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5. La decisión de no usar Pact se validó primero investigando el estado real del soporte de Pact para Dart/Flutter (sin SDK de consumidor oficial ni bien mantenido), y la extensión del patrón se diseñó en modo de planificación con aprobación explícita antes de implementar.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> [Sobre la recomendación de Pact del enunciado:] ¿Crees que lo estamos cumpliendo según lo realizado o hay que mejorarlo? [Tras la evaluación, con la brecha identificada de que solo se cubría el contrato de nivel:] Estoy de acuerdo, aplícalo a todos los endpoints compartidos como estás sugiriendo, sin la necesidad de usar Pact. Agrega ese razonamiento en la documentación.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se agregaron seis fixtures JSON compartidos (bit-a-bit idénticos en ambos repos) bajo `docs/contract/fixtures/`, y una prueba de contrato en cada repo por cada fixture que ejercita el **código real** de ese lado (no una re-implementación de su forma): en el backend, el esquema Zod real y rutas reales vía `supertest`; en el frontend, los clientes HTTP reales (`AuthApiClient`, `ProgressApiClient`, `LeaderboardApiClient`) contra un `MockHttpClient` que reenvía el fixture.
+
+```typescript
+// Backend: la respuesta REAL de una ruta debe tener las mismas claves que el fixture.
+const response = await request(app).post('/auth/login').send({ username, password });
+expectSameKeys(response.body, loadFixture('auth-login-response.json'));
+```
+
+```dart
+// Frontend: el cliente HTTP REAL debe parsear el fixture en el modelo esperado.
+final session = await api.login(username: 'ignored', password: 'ignored12');
+expect(session.token, fixture['token']);
+```
+
+| Componente | Ubicación | Rol |
+|------------|-----------|-----|
+| Fixtures | `docs/contract/fixtures/*.json` (6 archivos) | Forma compartida de cada frontera HTTP, idéntica en ambos repos |
+| Razonamiento documentado | `docs/contract/fixtures/README.md` | Por qué fixtures compartidos en vez de Pact, y la limitación aceptada |
+| Prueba de contrato (backend) | `tests/integration/contractFixtures.spec.ts` | Valida el fixture de request con el Zod schema real; compara claves de las respuestas reales (vía rutas HTTP reales) contra cada fixture de respuesta |
+| Prueba de contrato (frontend) | `test/infrastructure/http/contract_fixtures_test.dart` | Parsea cada fixture de respuesta con el cliente HTTP real; verifica que el cuerpo de la petición real de sync coincide con el fixture de request |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (169/169 tests) en el backend, y con `flutter analyze` y `flutter test` (104/104 tests) en el frontend, antes de commitear.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- No toda recomendación de la rúbrica aplica igual de bien a cualquier stack: Pact tiene soporte maduro para JVM/.NET/JS/Python/Go/Ruby, pero no para Dart/Flutter en el lado consumidor, lo que lo vuelve poco práctico como "primera opción" para este proyecto en particular sin construir tooling propio desproporcionado al alcance.
+- Una prueba de contrato no necesita un framework dedicado para dar la garantía central que importa (ambos lados coinciden en la forma de los datos): un fixture compartido más pruebas que ejercitan el código de producción real de cada lado logra el mismo objetivo con mucho menos costo de adopción, al precio de sincronización manual entre repos en vez de automática.
+- Comparar **conjuntos de claves** (no valores exactos) en las pruebas del lado del backend es la forma correcta de verificar forma sin acoplar el test a datos específicos generados en cada corrida (usuarios, tokens, puntajes).
+- Documentar explícitamente por qué se descartó la herramienta recomendada por el enunciado (con la limitación técnica concreta que lo motivó) dentro del propio repositorio (`docs/contract/fixtures/README.md`) deja el razonamiento disponible para quien evalúe el proyecto, en vez de depender de que se explique solo verbalmente en la defensa.
+
+---
+
+## Consulta #23 — Fixture de `GET /levels`, validación de tipos con Zod, fixtures de error y verificación de sincronización en CI
+
+**Tarea o problema abordado.**
+
+Como refinamiento sobre la extensión de pruebas de contrato (Consulta #22), se pidieron cuatro mejoras puntuales: (1) un fixture compartido para `GET /levels` (un nivel de ejemplo del catálogo, distinto del fixture de `LevelJsonMapper` ya existente); (2) que las pruebas del lado del backend validaran **tipos**, no solo el conjunto de claves de las respuestas — hasta ahora, un campo con el nombre correcto pero el tipo equivocado habría pasado la comparación; (3) fixtures para los dos errores más comunes de la API (401 no autorizado, 409 usuario duplicado); (4) un script o chequeo en CI que compare los fixtures de contrato entre los dos repos por hash, pese a ser repositorios independientes sin pipeline compartido.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio, ejecución de la suite de tests y del script de sincronización (incluyendo una prueba deliberada de divergencia para confirmar que el script sí falla cuando corresponde).
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ahora: añadir fixture compartido para `GET /levels` (un nivel de ejemplo del catálogo). Validar tipos además de claves en el backend (p. ej. con Zod schemas para respuestas, no solo requests). Añadir fixtures de error: 401 Unauthorized, 409 UserAlreadyExists. Script o check en CI que compare hashes de fixtures entre repos (aunque sean repos separados).
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+```typescript
+// tests/support/contractSchemas.ts: schemas SOLO de test, .strict() rechaza
+// campos extra además de validar tipos.
+export const authLoginResponseSchema = z
+  .object({ token: z.string(), userId: z.string(), username: z.string() })
+  .strict();
+```
+
+```bash
+# scripts/check-contract-fixtures-sync.sh: usa un checkout hermano local si
+# existe, o clona el otro repo en CI; nunca hace fallar el build por un
+# problema de acceso, solo por una divergencia real de contenido.
+if ! git clone --depth 1 --branch "$OTHER_REPO_REF" "$OTHER_REPO_URL" "$OTHER_REPO_PATH"; then
+  echo "No se pudo clonar el repo frontend... Omitiendo verificación (no es un fallo)."
+  exit 0
+fi
+```
+
+| Componente | Ubicación | Cambio |
+|------------|-----------|--------|
+| Fixtures nuevos | `docs/contract/fixtures/levels-get-response.json`, `error-401-unauthorized.json`, `error-409-user-already-exists.json` | Un nivel de ejemplo de `GET /levels`; sobre de error para 401 y 409 |
+| Schemas de tipo | `tests/support/contractSchemas.ts` | Un `z.object().strict()` por cada forma de respuesta (auth, progress, leaderboard, nivel, error) |
+| Prueba de contrato | `tests/integration/contractFixtures.spec.ts` | Reemplaza la comparación de solo-claves por `schema.parse()` sobre fixture y respuesta real; agrega casos para `GET /levels` (comparación exacta, no solo de forma, al ser datos controlados en el test) y para 401/409 |
+| Script de sincronización | `scripts/check-contract-fixtures-sync.sh` | Compara SHA-256 de cada fixture contra el repo frontend (checkout hermano en local, clon superficial en CI); falla solo ante una divergencia real de contenido |
+| CI | `.github/workflows/ci.yml` | Nuevo paso que corre el script tras la suite de tests |
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (172/172 tests), y adicionalmente se probó el script de sincronización de forma manual introduciendo una divergencia deliberada en un fixture para confirmar que detecta el fallo (`exit 1`) antes de revertirla.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Comparar solo el conjunto de claves de una respuesta (Consulta #22) es más débil de lo que parece: no detecta un campo con el tipo equivocado. Validar con un schema de tipos (`.strict()` para además rechazar campos no documentados) es la forma correcta de que una prueba de contrato cumpla su propósito completo.
+- Un chequeo de sincronización entre dos repos independientes en CI debe decidir explícitamente cómo comportarse cuando **no puede** hacer la comparación (repo privado, sin red): fallar el build en ese caso penalizaría un problema de acceso ajeno al contenido de los fixtures; reportarlo y continuar es el comportamiento correcto para una red de seguridad adicional, no un gate obligatorio.
+- Probar el "camino de fallo" de un script de verificación (no solo el camino feliz) antes de darlo por terminado — en este caso, corromper temporalmente un fixture y confirmar que el script realmente devuelve `exit 1` — es la única forma de tener certeza de que la comprobación funciona, en vez de asumirlo por lectura del código.
+
+## Consulta #24 — Balance de movimientos y tiempo por nivel en el catálogo
+
+**Tarea o problema abordado.**
+
+El usuario pidió revisar si la cantidad de movimientos permitidos (`maxMoves`) y el tiempo límite (`maxTimeInSeconds`) de los 22 niveles del catálogo estaban bien calibrados, señalando que algunos parecían muy ajustados y otros muy holgados.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio y ejecución de un script de análisis puntual (no incorporado al repositorio).
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ahora necesito tu ayuda para chequear la cantidad de movimientos y tiempo por nivel (algunos son muy ajustados y otros son muy holgados).
+>
+> Ajusta el tiempo de esos niveles que comentas, y en los niveles medium, déjales 5 movimientos de margen.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se escribió un script temporal (`node`, no parte del repositorio) que, para cada uno de los 22 niveles, calculó:
+- `optimalMoves` = cantidad de flechas (cada flecha exitosa se extrae una vez; ganar exige extraerlas todas).
+- Margen de movimientos = `maxMoves - optimalMoves`.
+- Tiempo esperado según la fórmula real del frontend (`LevelTimeLimitCalculator`: `optimalMoves * segundosPorMovimiento(dificultad) + 15`, acotado a `[30, 600]`) comparado contra el `maxTimeInSeconds` real de cada nivel.
+
+Hallazgos relevantes:
+- Los 9 niveles `MEDIUM` (5 al 12, y 21) tenían márgenes de movimiento inconsistentes entre sí, algunos con solo 1 movimiento de holgura.
+- Se confirmó en `lib/domain/game/game.dart:221` que el contador de movimientos se incrementa en **todo** intento (`performMove`), exitoso o bloqueado — es decir, un margen de movimiento bajo penaliza al jugador incluso por un solo intento fallido, no solo por ineficiencia real.
+- Los niveles `level-14` (HARD) y `level-19` (EXPERT) tenían un `maxTimeInSeconds` marcadamente más holgado que sus pares de la misma dificultad al comparar la razón tiempo/movimiento.
+
+Cambios aplicados en `levels/*.json`:
+
+| Nivel | Campo | Antes | Después |
+|-------|-------|-------|---------|
+| level-5 | `maxMoves` | 8 | 12 |
+| level-6 | `maxMoves` | 9 | 13 |
+| level-7 | `maxMoves` | 11 | 15 |
+| level-8 | `maxMoves` | 12 | 16 |
+| level-9 | `maxMoves` | 11 | 15 |
+| level-10 | `maxMoves` | 11 | 15 |
+| level-11 | `maxMoves` | 11 | 15 |
+| level-12 | `maxMoves` | 11 | 15 |
+| level-21 | `maxMoves` | 8 | 9 |
+| level-14 | `maxTimeInSeconds` | 220 | 160 |
+| level-19 | `maxTimeInSeconds` | 320 | 240 |
+
+Todos los niveles `MEDIUM` quedan con exactamente `optimalMoves + 5` movimientos de margen. Los niveles `level-14` y `level-19` quedan con una razón tiempo/movimiento consistente con sus pares `HARD`/`EXPERT`.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (172/172 tests) tras aplicar los 11 cambios, confirmando que el catálogo sigue cargando correctamente.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- El diseño de niveles no puede evaluarse mirando solo `maxMoves` en aislado: hay que cruzarlo contra `optimalMoves` (derivado del propio contenido del nivel) y contra el comportamiento real del contador de movimientos en el dominio del juego, no solo contra la intuición de "cuántas flechas hay".
+- Un margen de movimiento igual a cero es más severo de lo que parece a simple vista, porque el contador de movimientos penaliza intentos bloqueados, no solo decisiones subóptimas — un detalle de implementación que cambia por completo la evaluación de qué margen es "justo".
+- Quedó fuera de alcance de esta consulta —y pendiente de decisión del usuario— si conviene aplicar el mismo criterio de margen a los niveles `HARD`/`EXPERT` (13 al 20), que hoy en su mayoría tienen margen cero; no se modificó su `maxMoves` sin instrucción explícita.
+
+## Consulta #25 — Validación estructural del catálogo de niveles y nombres faltantes
+
+**Tarea o problema abordado.**
+
+Dos pedidos relacionados: (1) validar si el JSON de los 22 niveles del catálogo tenía algún problema estructural; (2) corregir que el catálogo de niveles en la app mostrara nombres genéricos en vez de un nombre propio para algunos niveles.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio y al repositorio frontend, y un script de validación puntual en Node.js (no incorporado al repositorio) para auditar los 22 archivos.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Ahora necesito que valides si el JSON de los niveles y veas si hay algún problema en ellos.
+>
+> También corrige que los idiomas mostrados en el catálogo de niveles en la app, sean nombres propios y no un nombre genérico que digan "nivel 1".
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se escribió un validador temporal que revisó, para cada uno de los 22 niveles: campos requeridos, límites de tablero, dificultad válida, ids duplicados (dentro y entre archivos), solapamiento silencioso de celdas (el `LevelBuilder` no lo detecta), `maxMoves >= optimalMoves`, y solvabilidad real vía backtracking (misma lógica que `LevelSolvabilityValidator.ts`). Un primer intento marcó ~27 falsos positivos por asumir que el cuerpo de una flecha debía ser una línea recta alineada con su `direction`; se confirmó contra el código real (`Arrow` entity del frontend, `LevelBuilder` del backend) que el diseño soporta formas en L/Z/"cortina" a propósito, y que el único requisito real es que cabeza+cuerpo formen una cadena conexa por adyacencia (para que el trazador del cliente dibuje una línea continua). Con esa corrección, los 22 niveles pasaron sin problemas — salvo un hallazgo de datos, no de estructura: `level-21.json` y `level-22.json` eran los únicos dos sin campo `"name"`, lo que hacía que el frontend (que ya prioriza `name` y solo cae al `id` como último recurso) mostrara su id crudo en el catálogo. Se agregó:
+
+```json
+// level-21.json
+"name": "Simetría Perfecta",
+// level-22.json
+"name": "Todos los Tamaños",
+```
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (172/172 tests) tras agregar los nombres, y con `flutter analyze`/`flutter test` (107/107 tests) en el repo frontend para confirmar que el catálogo ya no muestra el id crudo.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Ningún paso del arranque del servidor valida hoy el esquema, el solapamiento de celdas ni la solvabilidad de los niveles al cargarlos (`parseLevelJsonFile.ts` solo hace `JSON.parse`); un nivel corrupto se serviría igual sin aviso. Queda como mejora sugerida (no aplicada) convertir este validador en un test o chequeo de arranque/CI.
+- Antes de reportar un hallazgo de validación hay que confirmar la regla real del dominio, no la intuición: asumir que el cuerpo de una flecha debe alinearse con su dirección de disparo habría producido un reporte de "10 niveles rotos" completamente falso.
+
+## Consulta #26 — Conteo de catálogo hardcodeado en tests y arranque no resiliente a niveles rotos
+
+**Tarea o problema abordado.**
+
+El usuario señaló dos problemas relacionados en `LEVEL_SEED_CATALOG`: (1) el test `should_contain_the_currently_curated_levels` afirmaba `expect(LEVEL_SEED_CATALOG_SIZE).toBe(22)` con un número fijo, que se rompería apenas se agregara o quitara un nivel de `levels/`; (2) preguntó qué pasaría si se subieran niveles nuevos junto con algunos no resolubles (p. ej. 30 niveles, 15 sin solución) — si el número debía derivarse de la carpeta, y cómo debía comportarse el sistema ante contenido inválido.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio, ejecución de la suite de tests y arranque real del servidor (`npm run dev`) para reproducir el comportamiento antes y después del fix.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Hay un tema en las pruebas de LEVEL SEED CATALOG, la prueba should_contain_the_currently_curated_levels pone que el número de niveles debe ser 22, pero en verdad ese número puede ser variable con el tiempo [...] como puedo solucionar que este número vaya de la mano con la cantidad de niveles de la carpeta o, si el test debe ser diferente, porque puede darse el caso de que, yo suba 30 niveles, pero 15 no tengan solución, que puedo hacer?
+>
+> Ok, voy a subir un nivel malo [...] crea un nivel que no tenga solución [...] reinicia el servidor e inclúyelo en la carpeta de niveles, y prueba el comportamiento que me estás comentando.
+>
+> Sí, hazlo [implementar el fix de resiliencia] y reinicia el servidor.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se investigó el código real antes de proponer nada: `LEVEL_SEED_CATALOG_SIZE` ya se derivaba de `LEVEL_SEED_CATALOG.length` (`levelSeedCatalog.ts`), así que el único punto hardcodeado era la aserción del test. Se cambió por una comparación contra `listLevelJsonFiles().length` (el conteo real de `levels/*.json`), eliminando el número fijo sin perder cobertura.
+
+Para la segunda pregunta, se leyó `syncLevelCatalogFromDirectory.ts`/`seedLevelCatalog.ts` y se confirmó que el arranque (`seedLevelCatalog` → `syncLevelCatalogFromDirectory`) procesaba los archivos en un bucle **sin try/catch**, documentado explícitamente como intencional ("Propaga errores de dominio [...] para fallar el bootstrap"). Antes de tocar nada se reprodujo el problema en vivo: se creó `levels/level-99.json` con dos flechas apuntándose entre sí (bloqueo mutuo permanente, sin salida posible), se verificó de forma aislada con `LevelSolvabilityValidator.isPlayable()` que efectivamente era `false`, y se arrancó el servidor con ese archivo junto a los 22 buenos — el proceso murió con `LevelNotSolvableError` sin llegar a escuchar en el puerto, tumbando también los 22 niveles válidos.
+
+Se corrigió haciendo que `syncLevelCatalogFromDirectory` capture el error **por archivo** (igual que ya hacía el watcher de hot-reload, `LevelCatalogFileSubject.notifyObservers`) en vez de abortar en el primero que falle:
+
+```ts
+for (const filePath of files) {
+  try {
+    const saved = await upsertLevelFromFile(container, filePath);
+    levelIds.push(saved.id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failed.push({ filePath, fileName: path.basename(filePath), message });
+    console.error(`Level catalog seed: skipping "${path.basename(filePath)}" — ${message}`);
+  }
+}
+```
+
+`SyncLevelCatalogResult`/`SeedLevelCatalogResult` ganaron un campo `failed: SyncLevelCatalogFailure[]`, y `server.ts` ahora loguea cada archivo omitido con su motivo tras el seed. Se repitió la misma prueba en vivo con el fix aplicado: el log mostró `Level seed: 22/23 niveles cargados` + el detalle de `level-99.json`, el servidor sí quedó escuchando, `GET /health` respondió `{"status":"ok"}`, `GET /levels` devolvió los 22 niveles válidos, y `GET /levels/level-99` devolvió `404`.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (173/173 tests, incluyendo el test de regresión nuevo `should_skip_an_unsolvable_level_and_still_sync_the_rest`) y con la reproducción manual en vivo (arranque real con y sin el fix) descrita arriba.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- El mismo tipo de error (`LevelNotSolvableError`) se comportaba de forma opuesta según el momento: resiliente en el watcher de hot-reload, fatal en el arranque. Ningún test cubría el camino de arranque con un archivo roto — el test suite validaba la solvabilidad de cada nivel curado (`it.each`), pero no el comportamiento del *pipeline* de seed ante un nivel inválido.
+- Reproducir el bug en vivo (crear el archivo, arrancar el servidor, ver el crash real) antes de escribir el fix, y repetir la misma reproducción después, dio una confirmación mucho más sólida que solo leer el código o confiar en los tests unitarios — especialmente para un comportamiento de arranque que ningún test cubría todavía.
+- Queda una decisión de producto pendiente, no resuelta aquí: el arranque ahora es resiliente por archivo, pero sigue sin existir una alerta activa (más allá del log de consola) si un nivel queda fuera del catálogo servido; una futura mejora sería exponer `failed` en algún endpoint de salud/diagnóstico en vez de solo loguearlo.

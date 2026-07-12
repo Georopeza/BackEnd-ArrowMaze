@@ -4,7 +4,7 @@
   "levelNumber": 19,
   "difficulty": "EXPERT",
   "maxMoves": 27,
-  "maxTimeInSeconds": 320,
+  "maxTimeInSeconds": 240,
   "width": 15,
   "height": 15,
   "exit": { "row": 7, "col": 7 },

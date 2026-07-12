@@ -10,6 +10,7 @@ import { createProgressRouter } from './routes/progress.routes';
 import { createLeaderboardRouter } from './routes/leaderboard.routes';
 import { createLevelsRouter } from './routes/levels.routes';
 import { requestLoggerMiddleware } from './middlewares/requestLogger.middleware';
+import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorHandlerMiddleware } from './middlewares/errorHandler.middleware';
 import { createAuthMiddleware } from './middlewares/auth.middleware';
 import { AppContainer, createContainer } from './container';
@@ -45,7 +46,7 @@ export interface CreateServerOptions {
  *
  * Aspectos transversales (AOP) registrados aquí:
  * 1. Logging — `requestLoggerMiddleware`
- * 2. Errores — `errorHandlerMiddleware`
+ * 2. Errores — `notFoundMiddleware` (rutas no reconocidas) + `errorHandlerMiddleware`
  * 3. Autorización JWT — `createAuthMiddleware` en rutas protegidas
  *
  * @param jwtSecret Secreto para firmar/verificar tokens.
@@ -61,6 +62,14 @@ export async function createServer(
     const result = await seedLevelCatalog(container);
     // eslint-disable-next-line no-console
     console.log(`Level seed: ${result.seeded}/${result.expected} niveles cargados`);
+    if (result.failed.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(`Level seed: ${result.failed.length} nivel(es) omitidos por error:`);
+      for (const failure of result.failed) {
+        // eslint-disable-next-line no-console
+        console.error(`  - ${failure.fileName}: ${failure.message}`);
+      }
+    }
   }
 
   let levelCatalogWatcher: LevelCatalogFileSubject | null = null;
@@ -89,6 +98,7 @@ export async function createServer(
   app.use(createLeaderboardRouter(container));
   app.use(createLevelsRouter(container, authMiddleware));
 
+  app.use(notFoundMiddleware);
   app.use(errorHandlerMiddleware);
 
   return app;

@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { LevelJsonMapper } from '../../../src/infrastructure/mappers/LevelJsonMapper';
 import { Difficulty } from '../../../src/domain/entities/LevelDefinition';
 import { ArrowCell } from '../../../src/domain/entities/ArrowCell';
@@ -7,61 +9,18 @@ import { Direction } from '../../../src/domain/value-objects/Direction';
 import { StructuredLevelJsonDto } from '../../../docs/contract/level.contract';
 
 /**
- * Nivel de ejemplo "simple-1" compartido por el equipo. Nota: el width/
- * height originales (4) eran incorrectos para las posiciones de las
- * flechas (llegan hasta row/col 4); se corrigió a 5x5, y se agregó
- * `exit` en la única celda que queda libre del tablero (0,4).
+ * Prueba de contrato: `simple-1.json` es el fixture compartido con el
+ * repo frontend (`Arrow-Maze-Escape-Puzzle/docs/levels/simple-1.json`),
+ * copia bit-a-bit (ver `docs/levels/README.md`). Leerlo desde disco en vez
+ * de embeber un literal asegura que este mapper se pruebe contra la MISMA
+ * forma de JSON que el frontend espera del contrato compartido
+ * (`docs/contract/level.contract.ts` ↔ `lib/contract/level_contract.dart`):
+ * un cambio incompatible en cualquiera de los dos lados (renombrar un
+ * campo, invalidar una flecha por el mínimo de 1 celda de cuerpo, etc.)
+ * hace fallar este test.
  */
-const simpleLevel: StructuredLevelJsonDto = {
-  id: 'simple-1',
-  levelNumber: 1,
-  difficulty: 'EASY',
-  maxMoves: 5,
-  maxTimeInSeconds: 60,
-  width: 5,
-  height: 5,
-  exit: { row: 0, col: 4 },
-  arrows: [
-    { id: 'f1', direction: 'LEFT', head: { row: 0, col: 0 }, body: [{ row: 0, col: 1 }] },
-    { id: 'f2', direction: 'RIGHT', head: { row: 1, col: 1 }, body: [{ row: 1, col: 0 }] },
-    { id: 'f3', direction: 'DOWN', head: { row: 1, col: 2 }, body: [{ row: 0, col: 2 }] },
-    { id: 'f4', direction: 'RIGHT', head: { row: 0, col: 3 }, body: [] },
-    {
-      id: 'f5',
-      direction: 'UP',
-      head: { row: 1, col: 3 },
-      body: [
-        { row: 2, col: 3 },
-        { row: 2, col: 2 },
-      ],
-    },
-    {
-      id: 'f6',
-      direction: 'UP',
-      head: { row: 2, col: 1 },
-      body: [
-        { row: 3, col: 1 },
-        { row: 4, col: 1 },
-        { row: 4, col: 0 },
-        { row: 3, col: 0 },
-        { row: 2, col: 0 },
-      ],
-    },
-    {
-      id: 'f7',
-      direction: 'DOWN',
-      head: { row: 4, col: 2 },
-      body: [
-        { row: 3, col: 2 },
-        { row: 3, col: 3 },
-        { row: 3, col: 4 },
-        { row: 2, col: 4 },
-        { row: 1, col: 4 },
-      ],
-    },
-    { id: 'f8', direction: 'LEFT', head: { row: 4, col: 4 }, body: [{ row: 4, col: 3 }] },
-  ],
-};
+const simpleLevelPath = path.join(__dirname, '../../../docs/levels/simple-1.json');
+const simpleLevel: StructuredLevelJsonDto = JSON.parse(fs.readFileSync(simpleLevelPath, 'utf-8'));
 
 describe('LevelJsonMapper', () => {
   const mapper = new LevelJsonMapper();
@@ -76,7 +35,7 @@ describe('LevelJsonMapper', () => {
     expect(level.difficulty).toBe(Difficulty.EASY);
     expect(level.maxMoves).toBe(5);
     expect(level.maxTimeInSeconds).toBe(60);
-    expect(level.board).toHaveLength(5);
+    expect(level.board).toHaveLength(6);
     expect(level.board[0]).toHaveLength(5);
   });
 
@@ -103,6 +62,19 @@ describe('LevelJsonMapper', () => {
 
     expect(bodyCell).toBeInstanceOf(ArrowBodyCell);
     expect((bodyCell as ArrowBodyCell).arrowId).toBe('f1');
+  });
+
+  it('should_preserve_display_name_in_round_trip', () => {
+    const dtoWithName: StructuredLevelJsonDto = {
+      ...simpleLevel,
+      name: 'Simple One',
+    };
+
+    const level = mapper.toLevelDefinition(dtoWithName);
+    const roundTripped = mapper.toDto(level);
+
+    expect(level.name).toBe('Simple One');
+    expect(roundTripped.name).toBe('Simple One');
   });
 
   it('should_round_trip_dto_via_toLevelDefinition_and_toDto', () => {
