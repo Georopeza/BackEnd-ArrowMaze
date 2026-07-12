@@ -2,7 +2,7 @@
   "id": "level-30",
   "name": "La Corona Real",
   "levelNumber": 30,
-  "difficulty": "LEGENDARY",
+  "difficulty": "EXPERT",
   "maxMoves": 16,
   "maxTimeInSeconds": 360,
   "width": 21,
