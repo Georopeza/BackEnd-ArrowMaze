@@ -15,10 +15,8 @@ leaderboard, following **Clean Architecture** and **SOLID** principles.
 
 All four layers are implemented and covered by tests: JWT authentication, level
 CRUD with solvability validation, bidirectional progress sync (push on victory,
-pull on login), collectible unlock sync, a global leaderboard, and SQLite-backed
-persistence that survives process restarts. The seed catalog under
-[`levels/`](levels/) currently ships 15 levels (`level-1.json`..`level-15.json`),
-loaded and validated for solvability at boot (`seedLevelCatalog`).
+pull on login), collectible unlock sync, a global leaderboard, and persistence
+(SQLite or Postgres) that survives process restarts.
 
 ## Architecture
 
@@ -30,7 +28,7 @@ flowchart TB
     subgraph L4["Infrastructure (frameworks & drivers)"]
         direction TB
         Express["Express server, routes, middlewares"]
-        Sqlite["SQLite repositories (better-sqlite3), incl. SqliteCollectibleRepository"]
+        Sqlite["SQLite/Postgres repositories, incl. *CollectibleRepository"]
         Security["BcryptPasswordHasher, JwtTokenService"]
         Mappers["LevelJsonMapper"]
     end
@@ -418,7 +416,7 @@ playability test (`tests/e2e/`). CI (`.github/workflows/ci.yml`) runs lint, buil
 several integration tests starving other parallel workers of CPU) and a final step that
 verifies the shared contract fixtures under `docs/contract/fixtures/` are still in sync
 with the frontend repo (`scripts/check-contract-fixtures-sync.sh`), on every PR/push to
-`main`.
+`main` and `develop`.
 
 ## AI Usage Documentation
 

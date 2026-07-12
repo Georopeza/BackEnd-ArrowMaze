@@ -3,25 +3,39 @@ import path from 'node:path';
 import { createServer } from './infrastructure/http/server';
 
 /**
- * Arranque del proceso HTTP: crea la app (con seed de 15 niveles), escucha en `PORT`.
+ * Arranque del proceso HTTP: crea la app (con seed de niveles), escucha en `PORT`.
+ *
+ * Persistencia:
+ * - Si `DATABASE_URL` está definida → PostgreSQL (Neon): usuarios, progreso y
+ *   coleccionables sobreviven redeploys en Render.
+ * - Si no → SQLite en `DB_PATH` (desarrollo local sin Neon).
  *
  * El catálogo se inserta vía `seedLevelCatalog` antes de aceptar peticiones;
- * cada nivel vive en `levels/*.json` y se carga con `loadLevelCatalogFromDirectory`.
- *
- * `DB_PATH` apunta a un archivo SQLite real (por defecto `data/arrowmaze.db`
- * en la raíz del proyecto) para que usuarios, niveles y progreso sobrevivan
- * reinicios del proceso — a diferencia de los tests, que usan `:memory:`.
+ * cada nivel vive en `levels/*.json`.
  */
 async function bootstrap(): Promise<void> {
   const port = Number(process.env.PORT ?? 3000);
   const jwtSecret = process.env.JWT_SECRET ?? 'change-me-in-production';
+  const databaseUrl = process.env.DATABASE_URL;
   const dbPath = process.env.DB_PATH ?? path.join(process.cwd(), 'data', 'arrowmaze.db');
 
-  const app = await createServer(jwtSecret, { seedLevels: true, watchLevelCatalog: true, dbPath });
+  const app = await createServer(jwtSecret, {
+    seedLevels: true,
+    watchLevelCatalog: true,
+    databaseUrl,
+    dbPath: databaseUrl ? undefined : dbPath,
+  });
 
   app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`Arrow Maze backend listening on port ${port}`);
+    if (databaseUrl) {
+      // eslint-disable-next-line no-console
+      console.log('Persistence: PostgreSQL (DATABASE_URL)');
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(`Persistence: SQLite (${dbPath})`);
+    }
   });
 }
 

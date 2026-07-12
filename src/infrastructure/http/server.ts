@@ -13,7 +13,7 @@ import { requestLoggerMiddleware } from './middlewares/requestLogger.middleware'
 import { notFoundMiddleware } from './middlewares/notFound.middleware';
 import { errorHandlerMiddleware } from './middlewares/errorHandler.middleware';
 import { createAuthMiddleware } from './middlewares/auth.middleware';
-import { AppContainer, createContainer } from './container';
+import { AppContainer, createContainer, createSqliteContainerForTests } from './container';
 import { seedLevelCatalog } from '../persistence/seed/seedLevelCatalog';
 import { startLevelCatalogWatcher } from '../persistence/seed/startLevelCatalogWatcher';
 import { LevelCatalogFileSubject } from '../persistence/seed/observers/LevelCatalogFileSubject';
@@ -34,11 +34,16 @@ export interface CreateServerOptions {
   watchLevelCatalog?: boolean;
 
   /**
-   * Ruta del archivo SQLite. Por defecto `:memory:` (base efímera y aislada,
-   * el valor correcto para tests). `main.ts` pasa una ruta de archivo real
-   * para que los datos sobrevivan reinicios del proceso.
+   * Ruta del archivo SQLite cuando no hay `DATABASE_URL`. Por defecto `:memory:`
+   * (base efímera, ideal para tests). `main.ts` pasa una ruta real en local.
    */
   dbPath?: string;
+
+  /**
+   * Connection string PostgreSQL/Neon. Si se omite, se lee `process.env.DATABASE_URL`.
+   * Cuando está presente, ignora `dbPath`.
+   */
+  databaseUrl?: string;
 }
 
 /**
@@ -56,7 +61,10 @@ export async function createServer(
   jwtSecret: string = process.env.JWT_SECRET ?? 'test-secret',
   options: CreateServerOptions = {},
 ): Promise<Express> {
-  const container = createContainer(jwtSecret, options.dbPath);
+  const container = await createContainer(jwtSecret, {
+    dbPath: options.dbPath,
+    databaseUrl: options.databaseUrl,
+  });
 
   if (options.seedLevels) {
     const result = await seedLevelCatalog(container);
@@ -109,5 +117,5 @@ export async function createServer(
  * sin levantar HTTP.
  */
 export function createContainerForTests(jwtSecret = 'test-secret'): AppContainer {
-  return createContainer(jwtSecret);
+  return createSqliteContainerForTests(jwtSecret);
 }

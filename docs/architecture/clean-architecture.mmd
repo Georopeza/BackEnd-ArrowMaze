@@ -5,7 +5,7 @@ flowchart TB
     subgraph L4["Capa 4 - Infrastructure (frameworks y drivers)"]
         direction TB
         Express["Servidor Express, rutas, middlewares AOP (logging, errores, auth JWT)"]
-        Sqlite["Repositorios SQLite (adaptadores de ILevelRepository, IUserRepository, IProgressRepository, ICollectibleRepository)"]
+        Sqlite["Repositorios SQLite/Postgres (adaptadores de ILevelRepository, IUserRepository, IProgressRepository, ICollectibleRepository)"]
         Security["BcryptPasswordHasher, JwtTokenService"]
         Mappers["LevelJsonMapper (adaptador del contrato compartido con el frontend)"]
     end

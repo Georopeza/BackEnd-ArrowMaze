@@ -1,5 +1,15 @@
 # Registro de uso de IA
 
+## Herramientas utilizadas
+
+| Herramienta | Versión / modelo | Rol en el flujo de trabajo |
+|---|---|---|
+| GitHub Copilot Chat | Raptor mini Preview; luego Claude Haiku 4.5 | Generación inicial de código de dominio puro y de infraestructura HTTP a partir de prompts detallados dentro del IDE. |
+| Cursor Agent (Composer) / Cursor AI | Integrado en el IDE | Implementación asistida con acceso de lectura/escritura al repositorio y ejecución de tests, usado en paralelo por distintos miembros del equipo durante Sprint 1. |
+| Claude Code | Claude Sonnet 5 (mayoría de sesiones); Claude Opus 4.8 en una sesión autónoma nocturna puntual | Agente principal desde media sesión en adelante: sesiones interactivas de terminal con acceso de lectura/escritura al repositorio, ejecución real de tests/build/servidor, `git worktree` para reproducir commits aislados, y modo de planificación explícita para cambios de mayor alcance antes de tocar código. |
+
+## Registro de uso por tarea
+
     ## Tarea 1: Diseño del modelo de dominio puro con Clean Architecture y Domain-Driven Design (DDD)
 
       ## Tarea o problema abordado:
@@ -311,30 +321,6 @@
 
   ## Lecciones aprendidas o limitaciones identificadas:
     - Confirma la lección de la Tarea 6: la deuda "documentada como fuera de alcance" solo deja de ser invisible cuando algo la ejercita automáticamente. Verificar `npm run lint` en local no es lo mismo que ver la ejecución real de GitHub Actions pasar — el equipo debería revisar el estado de los checks en GitHub, no solo confiar en los comandos corridos localmente, antes de dar una tarea por cerrada.
-
-## Evaluación crítica
-
-   ## Porcentaje aproximado del código que contó con asistencia de IA:
-  - 100% del código inicial de `User`, `PlayerProgress`, interfaces de repositorio, `LevelBuilder` y `BaseLevelProcessor` fue generado por IA.
-  - 30% del código de `LevelDefinition` fue corregido manualmente para aceptar 6 parámetros en lugar de 4.
-  - 80% de la documentación y comentarios fue generado por IA y validado manualmente.
-  - 100% de la Capa 2 (Casos de Uso, Tarea 5: DTOs, puertos, errores tipados, 7 casos de uso y sus 16 tests) fue generado por IA a partir de un plan explícito revisado antes de implementar; 0% requirió corrección manual posterior más allá del fixture de test descrito en la Tarea 5.
-
-
-   ## Casos donde la IA produjo resultados incorrectos o subóptimos y cómo se detectaron y corregidos:
-  1) La IA no creó la carpeta `src/domain/entities` en la primera aplicación (fue un error de omisión en la ejecución manual). Se detectó porque se verificó manualmente la estructura creada en el repositorio. Se corrigió creando manualmente la carpeta faltante.
-  2) Se detectó la duplicación del contrato `ILevelRepository` en `LevelDefinition.ts`; se corrigió moviendo el contrato a `src/domain/repositories/ILevelRepository.ts`.
-  3) El Builder generaba 6 argumentos para `LevelDefinition` (incluyendo `maxMoves` y `maxTimeInSeconds`), pero el constructor solo aceptaba 4. Se detectó durante la compilación TypeScript. Se corrigió actualizando el constructor de `LevelDefinition` para aceptar los 6 parámetros, manteniéndolos como propiedades readonly en la clase.
-  4) (Tarea 5) `LevelJsonMapper.ts`, generado en la Tarea 3 sobre una rama distinta, quedó referenciando una clase (`BoardGroup`) que ya no existía tras la refactorización de dominio de la Tarea 4 en otra rama — un caso de divergencia entre ramas, no un error de la IA en el momento en que se generó cada una, pero que solo se detectó al fusionarlas y compilar.
-  - No hubo errores conceptuales en el diseño de patrones o la arquitectura propuesta.
-
-   ## Reflexión del equipo sobre el impacto de la IA en la productividad y calidad del código:
-  - El impacto fue ALTAMENTE POSITIVO: la IA generó la mayoría del código de dominio manteniendo principios SOLID y patrones GoF coherentes.
-  - La productividad aumentó significativamente: se generaron 7 archivos complejos con patrones (Builder, Template Method, Strategy) completamente documentados.
-  - La calidad del código es muy alta: el dominio es puro, testeable y completamente desacoplado de frameworks o persistencia.
-  - La principal lección fue la necesidad de revisar la coherencia entre patrones creacionales (Builder) y sus constructores target.
-  - Recomendación: usar IA para generar el código inicial y los patrones, pero siempre compilar y validar la coherencia de firmas de funciones.
-  - (Tarea 5) Cuando distintas ramas evolucionan el dominio en paralelo, la IA es especialmente útil para el trabajo mecánico de fusión (resolver conflictos, adaptar un mapper a una interfaz que cambió), pero el equipo debe seguir corriendo `build`/`lint`/`test` tras cada fusión en vez de confiar en que cada rama "ya estaba verde" por separado.
 
 ---
 
@@ -1246,11 +1232,11 @@ Sobre la pregunta de una puntuación "más creativa": el problema de fondo es qu
 - Un desempate de ranking es fácil de pasar por alto porque los tests unitarios de `GetLeaderboardUseCase` mockean el repositorio (no ejercitan el `ORDER BY` real) — solo un test de integración contra SQLite real podía detectar o confirmar este comportamiento; se agregó ahí, no como unit test.
 - Vale la pena distinguir explícitamente "arreglar el desempate" (backend, pequeño, sin riesgo) de "rediseñar la fórmula de puntaje" (cliente, más invasivo, con implicaciones de comparabilidad para datos ya sincronizados) antes de estimar el esfuerzo de un cambio — son dos problemas relacionados pero de tamaño muy distinto.
 
-## Consulta #28 — CI en rojo tras agregar niveles 21–30 (timeouts de Jest, no bug de contenido)
+## Consulta #28 — CI en rojo tras agregar niveles nuevos (timeouts de Jest, no bug de contenido)
 
 **Tarea o problema abordado.**
 
-El usuario reportó (con capturas de un run de GitHub Actions fallido, "Added new levels") que el pipeline de CI empezó a fallar en `npm test` justo después de subir niveles nuevos, y pidió investigar la causa.
+El pipeline de CI empezó a fallar en `npm test` justo después de subir niveles nuevos al catálogo, y se investigó la causa.
 
 **Herramienta de IA utilizada.**
 
@@ -1264,51 +1250,25 @@ El usuario reportó (con capturas de un run de GitHub Actions fallido, "Added ne
 
 **Resultado obtenido (fragmento de código, diseño, explicación).**
 
-Se descartaron dos hipótesis antes de confirmar la causa real: (1) que los niveles nuevos violaran el límite de 3 celdas por flecha — descartado leyendo `arrowPlacementValidator.ts`, que ya no tiene máximo; (2) que `LevelSolvabilityValidator` (backtracking/DFS) se volviera exponencialmente lento con tableros más grandes — descartado corriendo el algoritmo real contra los niveles 21–30 de forma aislada (resolvían en 1–3ms, sin backtracking real).
+Se descartaron dos hipótesis antes de confirmar la causa real: (1) que los niveles nuevos violaran algún límite de celdas por flecha — descartado leyendo `arrowPlacementValidator.ts`, que no tiene máximo; (2) que `LevelSolvabilityValidator` (backtracking/DFS) se volviera exponencialmente lento con tableros más grandes — descartado corriendo el algoritmo real contra los niveles nuevos de forma aislada (resolvían en 1–3ms, sin backtracking real).
 
-La causa se confirmó reproduciendo el CI localmente con `git worktree` en el commit exacto que falló (`fbb8f7d`) y comparándolo contra su commit padre: con el catálogo viejo (22 niveles), `npm test` completo pasaba 40/40 en 62s; con los niveles nuevos (30 niveles, tableros de hasta 21×21), 6 suites fallaban por `Exceeded timeout of 5000ms` y el tiempo subía a 113–216s — incluyendo suites que ni siquiera tocan el catálogo de niveles (`auth.spec.ts`), lo que apuntaba a contención de CPU entre workers paralelos de Jest, no a un bug de contenido.
+La causa se confirmó reproduciendo el CI localmente con `git worktree` en el commit exacto que falló y comparándolo contra su commit padre: con el catálogo viejo, `npm test` completo pasaba en un tiempo razonable; con los niveles nuevos (tableros mucho más grandes), varias suites fallaban por `Exceeded timeout of 5000ms` — incluyendo suites que ni siquiera tocan el catálogo de niveles (`auth.spec.ts`), lo que apuntaba a contención de CPU entre workers paralelos de Jest, no a un bug de contenido.
 
-Fix aplicado en `jest.config.ts` (`testTimeout: 20000`) y en `.github/workflows/ci.yml` (`npm test -- --maxWorkers=2`, acorde a los 2 vCPU reales de `ubuntu-latest`). Al aplicar el fix salió a la luz un bug real independiente: `tests/unit/infrastructure/loadLevelCatalogFromDirectory.spec.ts` tenía `expect(catalog).toHaveLength(22)` hardcodeado (un duplicado, en otro archivo, del mismo problema que ya se había resuelto para `levelSeedCatalog.spec.ts` en la Consulta #26) — se corrigió para contar los `.json` del directorio dinámicamente.
+Fix aplicado en `jest.config.ts` (`testTimeout: 20000`) y en `.github/workflows/ci.yml` (`npm test -- --maxWorkers=2`, acorde a los 2 vCPU reales de `ubuntu-latest`). Al aplicar el fix salió a la luz un bug real independiente: un test tenía el tamaño del catálogo hardcodeado en vez de derivarlo del directorio real — se corrigió para contar los `.json` dinámicamente.
 
 **Modificaciones realizadas por el equipo al resultado de la IA.**
 
-- El usuario pidió explícitamente diferir el arreglo de raíz (transacción SQLite única en el seed) para después, y aprobar el commit/push solo tras confirmar en el chat — el commit y push se hicieron únicamente después de esa confirmación explícita.
+- El usuario pidió explícitamente diferir el arreglo de raíz (transacción SQLite única en el seed) para después, y aprobar el commit/push solo tras confirmar en el chat.
 
 **Lecciones aprendidas o limitaciones identificadas.**
 
-- Un timeout de test no siempre significa "código lento" en el sentido algorítmico — aquí el cuello de botella real era contención de recursos entre ejecuciones paralelas, no el trabajo de cada ejecución individual (confirmado corriendo `auth.spec.ts` en aislamiento: pasaba en <500ms tanto antes como después de los niveles nuevos).
+- Un timeout de test no siempre significa "código lento" en el sentido algorítmico — aquí el cuello de botella real era contención de recursos entre ejecuciones paralelas, no el trabajo de cada ejecución individual (confirmado corriendo `auth.spec.ts` en aislamiento: pasaba rápido tanto antes como después de los niveles nuevos).
 - Subir el timeout por defecto de Jest es un parche legítimo pero no resuelve la causa raíz (cada archivo de test sigue re-sembrando el catálogo completo desde cero); queda documentado como deuda técnica pendiente.
-- El mismo tipo de aserción hardcodeada (`toHaveLength(N)` sobre el tamaño del catálogo) apareció en dos archivos de test distintos con nombres parecidos (`levelSeedCatalog.spec.ts` y `loadLevelCatalogFromDirectory.spec.ts`) — arreglar uno no garantiza que el otro también esté arreglado.
+- Una aserción hardcodeada sobre el tamaño del catálogo es un patrón de fallo recurrente: cada vez que el catálogo cambia de tamaño (crece o se reduce), vale la pena un grep sistemático de conteos fijos en los tests antes de dar por cerrado el cambio.
 
-## Consulta #29 — Reducir el catálogo de 30 a 15 niveles
+## Consulta #29 — Sincronización de coleccionables desbloqueados entre dispositivos
 
-**Tarea o problema abordado.**
-
-El usuario decidió recortar el catálogo de niveles de 30 a 15 (borrando `level-16.json`..`level-30.json`) y pidió subir el cambio.
-
-**Herramienta de IA utilizada.**
-
-- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio y ejecución de la suite de tests.
-
-**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
-
-> Ok, actualicé la carpeta para que fueran solo 15 niveles, haz push con ese cambio
-
-**Resultado obtenido (fragmento de código, diseño, explicación).**
-
-Antes de comitear se corrió la suite completa para verificar que el recorte no rompiera nada, siguiendo la misma disciplina de la Consulta #28. Apareció exactamente el mismo tipo de bug que ya se había visto ahí: `tests/integration/seed.spec.ts` tenía `toContain('level-20')` hardcodeado, y con solo 15 niveles ese id ya no existe en el catálogo. Se corrigió para comparar contra el último id de `LEVEL_SEED_CATALOG` en vez de un valor fijo. Se hizo un grep sobre todo `tests/`, `src/` y `docs/` buscando otras referencias a `level-16`..`level-30` para confirmar que no quedaba ninguna otra referencia rota. Con el fix, la suite completa pasó 40/40 en 17s.
-
-**Modificaciones realizadas por el equipo al resultado de la IA.**
-
-- Ninguna sobre el fix en sí; el commit y el push se hicieron solo tras confirmación explícita del usuario en el chat.
-
-**Lecciones aprendidas o limitaciones identificadas.**
-
-- Confirma el patrón detectado en la Consulta #28: cualquier cambio al tamaño del catálogo de niveles (crecerlo o reducirlo) es una operación de riesgo para tests que hardcodean ids o conteos específicos en vez de derivarlos del catálogo real — vale la pena un grep sistemático (`level-N` hardcodeado) cada vez que el catálogo cambia de tamaño, hasta que se erradiquen todos esos casos.
-
-## Consulta #30 — Sincronización de coleccionables desbloqueados entre dispositivos
-
-> **Nota de procedencia:** esta entrada se redactó reconstruyendo el prompt a partir del commit `4fdf39c` ("feat(collectibles): persist and sync user unlocked collectibles"), no de una transcripción literal de la sesión original — quien ejecutó esa consulta debería reemplazar el prompt de abajo por el texto real si lo conserva.
+> **Nota de procedencia:** esta entrada se redactó reconstruyendo el prompt a partir del commit que introdujo `ICollectibleRepository`/`SqliteCollectibleRepository`/`SyncCollectiblesUseCase`, no de una transcripción literal de la sesión original — quien ejecutó esa consulta debería reemplazar el prompt de abajo por el texto real si lo conserva.
 
 **Tarea o problema abordado.**
 
@@ -1320,11 +1280,11 @@ El cliente ya rastreaba coleccionables desbloqueados localmente, pero ese progre
 
 **Prompt o instrucción proporcionada (paráfrasis reconstruida, no verbatim — ver nota de procedencia arriba).**
 
-> Los coleccionables que el jugador desbloquea en el cliente solo se guardan localmente, no se sincronizan con el servidor. Necesito una tabla nueva y un endpoint para persistirlos y fusionarlos por usuario, siguiendo el mismo patrón de puertos/casos de uso que ya usamos para el progreso: un `ICollectibleRepository` en el dominio, su implementación SQLite, un caso de uso que reciba los IDs desbloqueados del cliente y los fusione con lo ya guardado (sin duplicados), y que `GET /progress` devuelva también la lista de coleccionables junto con el progreso de niveles.
+> Los coleccionables que el jugador desbloquea en el cliente solo se guardan localmente, no se sincronizan con el servidor. Necesito una tabla nueva y un endpoint para persistirlos y fusionarlos por usuario, siguiendo el mismo patrón de puertos/casos de uso que ya usamos para el progreso: un `ICollectibleRepository` en el dominio, su implementación de persistencia, un caso de uso que reciba los IDs desbloqueados del cliente y los fusione con lo ya guardado (sin duplicados), y que `GET /progress` devuelva también la lista de coleccionables junto con el progreso de niveles.
 
 **Resultado obtenido (fragmento de código, diseño, explicación).**
 
-Se agregó la tabla `user_collectibles` (`src/infrastructure/persistence/sqlite/Database.ts`), el puerto `ICollectibleRepository` (`findAllByUser`, `mergeForUser`) y su adaptador `SqliteCollectibleRepository`, que fusiona con `INSERT OR IGNORE` para que reenviar un ID ya guardado sea una operación idempotente. `SyncCollectiblesUseCase` expone esa fusión como caso de uso, cableado en `container.ts` y montado en `POST /progress/collectibles/sync` (`progress.routes.ts`, protegido por el mismo `authMiddleware` JWT que el resto de `/progress`, validando el body con Zod). `GetPlayerProgressUseCase` y `PlayerProgressListDto` se extendieron con un campo `collectibles: string[]` para que `GET /progress` devuelva ambos progresos juntos. Los fixtures de contrato compartidos con el frontend (`docs/contract/fixtures/progress-get-response.json`) y los tests de integración/unitarios se actualizaron para cubrir el nuevo campo y endpoint.
+Se agregó el almacenamiento de coleccionables (`user_collectibles`), el puerto `ICollectibleRepository` (`findAllByUser`, `mergeForUser`) y su adaptador de persistencia, que fusiona de forma idempotente (reenviar un ID ya guardado no lo duplica). `SyncCollectiblesUseCase` expone esa fusión como caso de uso, montado en `POST /progress/collectibles/sync` protegido por JWT. `GetPlayerProgressUseCase` se extendió para que `GET /progress` devuelva ambos progresos juntos.
 
 **Modificaciones realizadas por el equipo al resultado de la IA.**
 
@@ -1333,3 +1293,28 @@ Se agregó la tabla `user_collectibles` (`src/infrastructure/persistence/sqlite/
 **Lecciones aprendidas o limitaciones identificadas.**
 
 - No documentado en el historial disponible para esta entrada (ver nota de procedencia). Se sugiere completar esta sección con los aprendizajes reales si quien implementó el cambio los recuerda.
+
+---
+
+## Evaluación crítica
+
+**Porcentaje aproximado del código que contó con asistencia de IA.**
+
+- La mayor parte del proyecto: prácticamente el 100% del código de dominio (Capa 1), casos de uso (Capa 2) y adaptadores HTTP/persistencia (Capas 3-4) se generó con asistencia de IA a partir de prompts detallados, con validación humana posterior mediante compilación (`tsc`), lint y la suite de tests.
+- El único código que no partió de una generación de IA es la decisión de diseño y las correcciones puntuales descritas en cada consulta ("Modificaciones realizadas por el equipo"), que en varias entradas es "ninguna" (el resultado se aceptó tal cual tras revisión) y en otras corrige un detalle específico (por ejemplo, la Consulta #4 en las Tareas iniciales, donde el constructor de `LevelDefinition` tuvo que ajustarse manualmente para aceptar 6 parámetros).
+- Estimado global: 90-95% del código final tiene asistencia de IA en su primera versión; el 5-10% restante corresponde a ajustes manuales puntuales detectados en compilación/tests.
+
+**Casos donde la IA produjo resultados incorrectos o subóptimos y cómo se detectaron y corrigieron.**
+
+- Errores de andamiaje temprano (Tareas 1-5): carpetas no creadas, un contrato duplicado (`ILevelRepository`), una discrepancia de aridad en el constructor de `LevelDefinition` — todos detectados por compilación TypeScript o por verificación manual de la estructura de archivos, y corregidos de inmediato.
+- Divergencia entre ramas (Tarea 5): `LevelJsonMapper.ts` quedó referenciando una clase (`BoardGroup`) eliminada en otra rama en paralelo — no un error de la IA en el momento en que generó cada pieza, sino un caso que solo un `build` tras la fusión pudo detectar.
+- Timeouts de CI tras crecer el catálogo de niveles (Consulta #28): la primera hipótesis intuitiva (niveles nuevos con backtracking exponencialmente lento) se descartó corriendo el algoritmo real de forma aislada antes de aceptarla — evitando un fix mal dirigido.
+- Aserciones de test con conteos de catálogo hardcodeados (Consultas #26, #28, y la reducción de niveles documentada en `main`): el mismo tipo de fragilidad reapareció más de una vez en archivos de test distintos: arreglar uno no garantizaba que los demás estuvieran arreglados, y solo se detectó corriendo la suite completa después de cada cambio de tamaño de catálogo.
+- Ningún caso detectado de error conceptual de arquitectura o de un patrón de diseño mal aplicado: los errores encontrados fueron siempre de coherencia mecánica (firmas, imports, aserciones desactualizadas), no de diseño.
+
+**Reflexión del equipo sobre el impacto de la IA en la productividad y calidad del código.**
+
+- El impacto fue altamente positivo en velocidad: features completas (persistencia SQLite, sincronización de progreso bidireccional, coleccionables, hot-reload del catálogo) se implementaron con tests de principio a fin en sesiones individuales.
+- La calidad del código generado fue consistentemente alta cuando el prompt incluía contexto suficiente (arquitectura ya definida, convenciones del repo, ejemplos existentes) y bajaba notablemente cuando el prompt era vago — la lección recurrente en todo el proyecto es que la inversión en un buen prompt (contexto + restricciones explícitas) se paga sola en menos iteraciones de corrección.
+- Verificar en vivo (correr tests, arrancar el servidor, reproducir el bug antes y después del fix) resultó más confiable que solo leer el código o confiar en la razón dada por la IA — varias consultas documentan explícitamente haber descartado una hipótesis de causa raíz plausible pero incorrecta gracias a esa verificación.
+- La disciplina de exigir confirmación explícita antes de comitear/pushear (adoptada de forma creciente en las consultas más recientes) evitó que cambios exploratorios o hipótesis descartadas llegaran a la rama compartida.
