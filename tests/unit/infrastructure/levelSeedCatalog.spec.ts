@@ -9,6 +9,7 @@ import {
   assertSeedCatalogInvariants,
   getOrderedSeedCatalog,
 } from '../../../src/infrastructure/persistence/seed/levelSeedCatalog';
+import { listLevelJsonFiles } from '../../../src/infrastructure/persistence/seed/syncLevelCatalogFromDirectory';
 
 /**
  * Convierte un DTO del contrato compartido al shape que usa el validador de dominio.
@@ -37,12 +38,14 @@ function toValidatorDto(dto: (typeof LEVEL_SEED_CATALOG)[number]): ValidatorDto 
 describe('LEVEL_SEED_CATALOG', () => {
   const validator = new LevelSolvabilityValidator();
 
-  it('should_contain_the_currently_curated_levels', () => {
-    // Catálogo oficial: los 20 niveles diseñados manualmente que reemplazan
-    // a los 4 provisionales tras depurar las flechas sin cuerpo, más 2
-    // niveles de muestra con formas de tablero variadas (level-21, level-22).
-    expect(LEVEL_SEED_CATALOG).toHaveLength(LEVEL_SEED_CATALOG_SIZE);
-    expect(LEVEL_SEED_CATALOG_SIZE).toBe(22);
+  it('should_match_the_number_of_json_files_in_the_levels_directory', () => {
+    // El tamaño del catálogo debe seguir a `levels/*.json`, no a un número
+    // fijo: cada archivo nuevo que el equipo agregue debe reflejarse aquí
+    // sin tener que tocar este test. Si algún día `loadLevelCatalogFromDirectory`
+    // empezara a filtrar/saltar archivos, esta comparación lo detectaría.
+    const fileCount = listLevelJsonFiles().length;
+    expect(LEVEL_SEED_CATALOG).toHaveLength(fileCount);
+    expect(LEVEL_SEED_CATALOG_SIZE).toBe(fileCount);
   });
 
   it('should_have_unique_ids_and_level_numbers', () => {
