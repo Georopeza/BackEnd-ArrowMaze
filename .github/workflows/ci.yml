@@ -20,7 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      - run: npm test
+      - run: npm test -- --maxWorkers=2
 
       - name: Verify contract fixtures match the frontend repo
         run: scripts/check-contract-fixtures-sync.sh
