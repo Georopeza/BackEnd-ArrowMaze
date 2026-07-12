@@ -81,9 +81,18 @@ export class SqliteProgressRepository implements IProgressRepository {
   /**
    * Consulta el top de jugadores de un nivel con join contra `users`.
    *
+   * `highScore` es determinístico por diseño: cada flecha extraída otorga
+   * los mismos puntos fijos, así que **todo** jugador que complete el nivel
+   * termina con el mismo puntaje (ver `Game._pointsPerExtractedArrow` en el
+   * cliente). Ordenar solo por `highScore` deja el desempate librado al
+   * orden de inserción en SQLite, no al mérito real del jugador. Se
+   * desempata por tiempo ascendente (menos segundos es mejor) y, si además
+   * empatan en tiempo, por movimientos ascendentes.
+   *
    * @param levelId Nivel cuyo ranking se solicita.
    * @param limit Cantidad máxima de entradas a devolver.
-   * @returns Entradas ordenadas por `highScore` descendente.
+   * @returns Entradas ordenadas por `highScore` descendente, luego `minTimeInSeconds`
+   *   ascendente, luego `minMoves` ascendente.
    */
   public async getLeaderboardByLevel(levelId: string, limit: number): Promise<LeaderBoardEntry[]> {
     const rows = this.db
@@ -93,7 +102,7 @@ export class SqliteProgressRepository implements IProgressRepository {
          FROM progress p
          LEFT JOIN users u ON u.id = p.userId
          WHERE p.levelId = ?
-         ORDER BY p.highScore DESC
+         ORDER BY p.highScore DESC, p.minTimeInSeconds ASC, p.minMoves ASC
          LIMIT ?`,
       )
       .all(levelId, limit) as Array<{

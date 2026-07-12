@@ -1208,3 +1208,40 @@ for (const filePath of files) {
 - El mismo tipo de error (`LevelNotSolvableError`) se comportaba de forma opuesta según el momento: resiliente en el watcher de hot-reload, fatal en el arranque. Ningún test cubría el camino de arranque con un archivo roto — el test suite validaba la solvabilidad de cada nivel curado (`it.each`), pero no el comportamiento del *pipeline* de seed ante un nivel inválido.
 - Reproducir el bug en vivo (crear el archivo, arrancar el servidor, ver el crash real) antes de escribir el fix, y repetir la misma reproducción después, dio una confirmación mucho más sólida que solo leer el código o confiar en los tests unitarios — especialmente para un comportamiento de arranque que ningún test cubría todavía.
 - Queda una decisión de producto pendiente, no resuelta aquí: el arranque ahora es resiliente por archivo, pero sigue sin existir una alerta activa (más allá del log de consola) si un nivel queda fuera del catálogo servido; una futura mejora sería exponer `failed` en algún endpoint de salud/diagnóstico en vez de solo loguearlo.
+
+## Consulta #27 — Leaderboard sin desempate real (empates de puntaje ordenados por azar de inserción)
+
+**Tarea o problema abordado.**
+
+El usuario reportó que el leaderboard se veía mal ordenado: cada flecha extraída otorga los mismos 100 puntos fijos, así que todo jugador que completa un nivel termina con exactamente el mismo `highScore` (arrows × 100). Como el ranking solo ordenaba por `highScore`, el orden entre jugadores empatados quedaba librado al orden de inserción en SQLite en vez de reflejar quién jugó mejor (menos tiempo, menos movimientos). Pidió también sugerencias más creativas para el sistema de puntuación, y si el fix implicaba un cambio grande en el backend.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio y ejecución de tests.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> [...] al completar el nivel, todos tienen los mismos puntos [...] entonces, si todos completan el nivel y tienen los mismos puntos, el segundo criterio de orden, es el tiempo, ordenando de forma ascendente los tiempos [...] si se te ocurre una forma más creativa de gestionar los puntajes, coméntamela, y dime si esto implica un cambio importante en el backend.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se confirmó el bug leyendo `SqliteProgressRepository.getLeaderboardByLevel`: la consulta SQL solo tenía `ORDER BY p.highScore DESC`, sin ninguna cláusula de desempate, a pesar de que `minTimeInSeconds` y `minMoves` ya viajan en cada fila y en el DTO de respuesta (`LeaderBoardEntry`). Se verificó también que el cliente Flutter no reordena las entradas — confía en el orden que devuelve el servidor — así que el arreglo correcto vive enteramente en el backend, sin tocar el cliente ni el contrato de la API.
+
+Se cambió la cláusula a:
+
+```sql
+ORDER BY p.highScore DESC, p.minTimeInSeconds ASC, p.minMoves ASC
+```
+
+Se agregó un test de integración (`should_break_leaderboard_ties_by_time_then_by_moves_when_scores_match`) que registra tres jugadores con el mismo score pero distinto tiempo, insertados deliberadamente **fuera de orden** (el más lento primero), y verifica que `GET /leaderboard/:levelId` los devuelve ordenados por tiempo ascendente pese al orden de inserción.
+
+Sobre la pregunta de una puntuación "más creativa": el problema de fondo es que el puntaje actual (`arrows extraídas × 100 puntos fijos`) es enteramente determinístico — no diferencia habilidad real, solo indica "completó o no completó". Se explicó al usuario que subir el tiempo/movimientos a la fórmula del *score* en sí (en vez de usarlos solo como desempate) es posible y encaja con lo que pide el propio enunciado del proyecto ("sistema de puntuación basado en... movimientos y tiempo"), pero es un cambio de mayor alcance que vive del lado del **cliente**, no del backend: la fórmula se calcula en `Game.performMove()` (dominio Flutter, `_pointsPerExtractedArrow`), y tocarla exige actualizar varios tests de dominio del cliente (`game_test.dart` y otros que aseveran puntajes exactos) y decidir qué hacer con los puntajes ya sincronizados con la fórmula vieja (quedarían artificialmente bajos frente a partidas nuevas). El backend no necesitaría cambios de fórmula porque `PlayerProgress.updateScore` ya compara "mejor de ambos" sin asumir cómo se calculó el número. Se dejó como decisión pendiente del equipo, no implementada en esta consulta.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (174/174 tests, incluyendo el test de desempate nuevo).
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un desempate de ranking es fácil de pasar por alto porque los tests unitarios de `GetLeaderboardUseCase` mockean el repositorio (no ejercitan el `ORDER BY` real) — solo un test de integración contra SQLite real podía detectar o confirmar este comportamiento; se agregó ahí, no como unit test.
+- Vale la pena distinguir explícitamente "arreglar el desempate" (backend, pequeño, sin riesgo) de "rediseñar la fórmula de puntaje" (cliente, más invasivo, con implicaciones de comparabilidad para datos ya sincronizados) antes de estimar el esfuerzo de un cambio — son dos problemas relacionados pero de tamaño muy distinto.

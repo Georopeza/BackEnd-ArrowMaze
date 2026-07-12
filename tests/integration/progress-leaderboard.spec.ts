@@ -64,6 +64,47 @@ describe('Progress and leaderboard routes', () => {
     expect(response.body[0].highScore).toBe(100);
   });
 
+  it('should_break_leaderboard_ties_by_time_then_by_moves_when_scores_match', async () => {
+    // El puntaje es determinístico (cada flecha otorga los mismos puntos
+    // fijos), así que todo jugador que completa el nivel empata en score.
+    // El desempate real debe ser por tiempo (menos segundos gana) y, si aún
+    // empatan, por movimientos (menos movimientos gana) — no por orden de
+    // inserción en la base de datos.
+    const app = await createServer('test-secret');
+    const setupToken = await obtainAuthToken(app, 'tiebreak_setup');
+    await request(app)
+      .put('/levels/level-tiebreak')
+      .set(bearerHeader(setupToken))
+      .send({ ...solvableLevelDto, id: 'level-tiebreak' });
+
+    async function registerAndSync(username: string, timeInSeconds: number): Promise<void> {
+      await request(app).post('/auth/register').send({ username, password: 'super-secret' });
+      const login = await request(app).post('/auth/login').send({ username, password: 'super-secret' });
+      const token = login.body.token as string;
+      const userId = login.body.userId as string;
+
+      await request(app)
+        .post('/progress/sync')
+        .set(bearerHeader(token))
+        .send({ userId, levelId: 'level-tiebreak', score: 100, moves: 3, timeInSeconds, completed: true });
+    }
+
+    // Insertados deliberadamente fuera de orden: el más lento primero.
+    await registerAndSync('tiebreak_slowest', 12);
+    await registerAndSync('tiebreak_fastest', 5);
+    await registerAndSync('tiebreak_middle', 8);
+
+    const response = await request(app).get('/leaderboard/level-tiebreak');
+
+    expect(response.status).toBe(200);
+    expect(response.body.map((entry: { username: string }) => entry.username)).toEqual([
+      'tiebreak_fastest',
+      'tiebreak_middle',
+      'tiebreak_slowest',
+    ]);
+    expect(response.body.map((entry: { minTimeInSeconds: number }) => entry.minTimeInSeconds)).toEqual([5, 8, 12]);
+  });
+
   it('should_return_401_when_getting_progress_without_jwt', async () => {
     const app = await createServer('test-secret');
 
@@ -107,5 +148,24 @@ describe('Progress and leaderboard routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.levels).toEqual([]);
+    expect(response.body.collectibles).toEqual([]);
+  });
+
+  it('should_sync_collectibles_and_return_them_in_get_progress', async () => {
+    const app = await createServer('test-secret');
+    const token = await obtainAuthToken(app, 'collectibles_sync');
+
+    const syncResponse = await request(app)
+      .post('/progress/collectibles/sync')
+      .set(bearerHeader(token))
+      .send({ collectibleIds: ['collectible-milestone-2', 'collectible-final'] });
+
+    expect(syncResponse.status).toBe(200);
+    expect(syncResponse.body.collectibles).toEqual(['collectible-final', 'collectible-milestone-2']);
+
+    const getResponse = await request(app).get('/progress').set(bearerHeader(token));
+
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.body.collectibles).toEqual(['collectible-final', 'collectible-milestone-2']);
   });
 });
