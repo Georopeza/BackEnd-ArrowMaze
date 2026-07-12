@@ -62,6 +62,14 @@ export async function createServer(
     const result = await seedLevelCatalog(container);
     // eslint-disable-next-line no-console
     console.log(`Level seed: ${result.seeded}/${result.expected} niveles cargados`);
+    if (result.failed.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(`Level seed: ${result.failed.length} nivel(es) omitidos por error:`);
+      for (const failure of result.failed) {
+        // eslint-disable-next-line no-console
+        console.error(`  - ${failure.fileName}: ${failure.message}`);
+      }
+    }
   }
 
   let levelCatalogWatcher: LevelCatalogFileSubject | null = null;
