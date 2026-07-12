@@ -1,4 +1,5 @@
 import { IProgressRepository } from '../../domain/repositories/IProgressRepository';
+import { ICollectibleRepository } from '../../domain/repositories/ICollectibleRepository';
 import { PlayerProgressListDto } from '../dto/ProgressDtos';
 
 /**
@@ -11,7 +12,10 @@ import { PlayerProgressListDto } from '../dto/ProgressDtos';
  * expone lo que hay en el servidor.
  */
 export class GetPlayerProgressUseCase {
-  constructor(private readonly progressRepository: IProgressRepository) {}
+  constructor(
+    private readonly progressRepository: IProgressRepository,
+    private readonly collectibleRepository: ICollectibleRepository,
+  ) {}
 
   /**
    * Devuelve todo el progreso persistido de un usuario en todos los niveles.
@@ -21,6 +25,7 @@ export class GetPlayerProgressUseCase {
    */
   public async execute(userId: string): Promise<PlayerProgressListDto> {
     const all = await this.progressRepository.findAllByUser(userId);
+    const collectibles = await this.collectibleRepository.findAllByUser(userId);
 
     return {
       userId,
@@ -32,6 +37,7 @@ export class GetPlayerProgressUseCase {
         minTimeInSeconds: progress.minTimeInSeconds,
         isCompleted: progress.isCompleted,
       })),
+      collectibles,
     };
   }
 }

@@ -1,5 +1,6 @@
 import { GetPlayerProgressUseCase } from '../../../src/application/use-cases/GetPlayerProgressUseCase';
 import { IProgressRepository } from '../../../src/domain/repositories/IProgressRepository';
+import { ICollectibleRepository } from '../../../src/domain/repositories/ICollectibleRepository';
 import { PlayerProgress } from '../../../src/domain/entities/PlayerProgress';
 
 function buildProgressRepositoryStub(entries: PlayerProgress[]): jest.Mocked<IProgressRepository> {
@@ -11,6 +12,13 @@ function buildProgressRepositoryStub(entries: PlayerProgress[]): jest.Mocked<IPr
   };
 }
 
+function buildCollectibleRepositoryStub(collectibles: string[]): jest.Mocked<ICollectibleRepository> {
+  return {
+    findAllByUser: jest.fn().mockResolvedValue(collectibles),
+    mergeForUser: jest.fn().mockResolvedValue(collectibles),
+  };
+}
+
 describe('GetPlayerProgressUseCase', () => {
   it('should_return_all_levels_for_the_user_when_progress_exists', async () => {
     // Arrange
@@ -19,15 +27,18 @@ describe('GetPlayerProgressUseCase', () => {
       new PlayerProgress('p2', 'u1', 'level-2', 300, 4, 9, false),
     ];
     const progressRepository = buildProgressRepositoryStub(entries);
-    const useCase = new GetPlayerProgressUseCase(progressRepository);
+    const collectibleRepository = buildCollectibleRepositoryStub(['collectible-milestone-2']);
+    const useCase = new GetPlayerProgressUseCase(progressRepository, collectibleRepository);
 
     // Act
     const result = await useCase.execute('u1');
 
     // Assert
     expect(progressRepository.findAllByUser).toHaveBeenCalledWith('u1');
+    expect(collectibleRepository.findAllByUser).toHaveBeenCalledWith('u1');
     expect(result.userId).toBe('u1');
     expect(result.levels).toHaveLength(2);
+    expect(result.collectibles).toEqual(['collectible-milestone-2']);
     expect(result.levels[0]).toEqual({
       userId: 'u1',
       levelId: 'level-1',
@@ -41,7 +52,8 @@ describe('GetPlayerProgressUseCase', () => {
   it('should_return_an_empty_list_when_user_has_no_progress', async () => {
     // Arrange
     const progressRepository = buildProgressRepositoryStub([]);
-    const useCase = new GetPlayerProgressUseCase(progressRepository);
+    const collectibleRepository = buildCollectibleRepositoryStub([]);
+    const useCase = new GetPlayerProgressUseCase(progressRepository, collectibleRepository);
 
     // Act
     const result = await useCase.execute('new-user');
@@ -49,5 +61,6 @@ describe('GetPlayerProgressUseCase', () => {
     // Assert
     expect(result.userId).toBe('new-user');
     expect(result.levels).toEqual([]);
+    expect(result.collectibles).toEqual([]);
   });
 });

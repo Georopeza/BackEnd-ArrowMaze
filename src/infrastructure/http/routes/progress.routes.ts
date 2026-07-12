@@ -13,6 +13,11 @@ const syncProgressSchema = z.object({
   completed: z.boolean(),
 });
 
+/** Esquema Zod del body de `POST /progress/collectibles/sync`. */
+const syncCollectiblesSchema = z.object({
+  collectibleIds: z.array(z.string().min(1)),
+});
+
 /**
  * Rutas de progreso del jugador.
  *
@@ -28,6 +33,16 @@ export function createProgressRouter(container: AppContainer, authMiddleware: Re
     asyncHandler(async (req, res) => {
       const dto = syncProgressSchema.parse(req.body);
       const result = await container.syncProgress.execute(dto);
+      res.status(200).json(result);
+    }),
+  );
+
+  router.post(
+    '/progress/collectibles/sync',
+    authMiddleware,
+    asyncHandler(async (req, res) => {
+      const dto = syncCollectiblesSchema.parse(req.body);
+      const result = await container.syncCollectibles.execute(req.auth!.userId, dto.collectibleIds);
       res.status(200).json(result);
     }),
   );

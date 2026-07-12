@@ -48,6 +48,14 @@ export const progressGetResponseSchema = z
   .object({
     userId: z.string(),
     levels: z.array(progressResultSchema),
+    collectibles: z.array(z.string()),
+  })
+  .strict();
+
+export const collectiblesSyncResponseSchema = z
+  .object({
+    userId: z.string(),
+    collectibles: z.array(z.string()),
   })
   .strict();
 

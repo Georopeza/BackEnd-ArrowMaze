@@ -28,4 +28,11 @@ export interface LeaderboardQueryDto {
 export interface PlayerProgressListDto {
   userId: string;
   levels: ProgressResultDto[];
+  collectibles: string[];
+}
+
+/** Resultado de sincronizar coleccionables desbloqueados. */
+export interface CollectiblesSyncResultDto {
+  userId: string;
+  collectibles: string[];
 }

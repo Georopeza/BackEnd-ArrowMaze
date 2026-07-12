@@ -43,6 +43,14 @@ export function createDatabase(dbPath: string): Database.Database {
       isCompleted INTEGER NOT NULL,
       UNIQUE (userId, levelId)
     );
+
+    CREATE TABLE IF NOT EXISTS user_collectibles (
+      userId TEXT NOT NULL,
+      collectibleId TEXT NOT NULL,
+      unlockedAt TEXT NOT NULL,
+      UNIQUE (userId, collectibleId),
+      FOREIGN KEY (userId) REFERENCES users(id)
+    );
   `);
 
   return db;

@@ -148,5 +148,24 @@ describe('Progress and leaderboard routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.levels).toEqual([]);
+    expect(response.body.collectibles).toEqual([]);
+  });
+
+  it('should_sync_collectibles_and_return_them_in_get_progress', async () => {
+    const app = await createServer('test-secret');
+    const token = await obtainAuthToken(app, 'collectibles_sync');
+
+    const syncResponse = await request(app)
+      .post('/progress/collectibles/sync')
+      .set(bearerHeader(token))
+      .send({ collectibleIds: ['collectible-milestone-2', 'collectible-final'] });
+
+    expect(syncResponse.status).toBe(200);
+    expect(syncResponse.body.collectibles).toEqual(['collectible-final', 'collectible-milestone-2']);
+
+    const getResponse = await request(app).get('/progress').set(bearerHeader(token));
+
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.body.collectibles).toEqual(['collectible-final', 'collectible-milestone-2']);
   });
 });
