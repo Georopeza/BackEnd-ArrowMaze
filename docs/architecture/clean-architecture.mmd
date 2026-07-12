@@ -5,21 +5,21 @@ flowchart TB
     subgraph L4["Capa 4 - Infrastructure (frameworks y drivers)"]
         direction TB
         Express["Servidor Express, rutas, middlewares AOP (logging, errores, auth JWT)"]
-        Sqlite["Repositorios SQLite (adaptadores de ILevelRepository, IUserRepository, IProgressRepository)"]
+        Sqlite["Repositorios SQLite/Postgres (adaptadores de ILevelRepository, IUserRepository, IProgressRepository, ICollectibleRepository)"]
         Security["BcryptPasswordHasher, JwtTokenService"]
         Mappers["LevelJsonMapper (adaptador del contrato compartido con el frontend)"]
     end
     subgraph L3["Capa 3 - Interface Adapters"]
         direction TB
-        Controllers["Route handlers: auth, levels, progress, leaderboard"]
+        Controllers["Route handlers: auth, levels, progress (incluye sync de coleccionables), leaderboard"]
     end
     subgraph L2["Capa 2 - Application (casos de uso)"]
         direction TB
-        UseCases["RegisterUser, LoginUser, SyncProgress, GetPlayerProgress, GetLeaderboard, ListLevels, GetLevel, UpsertLevel"]
+        UseCases["RegisterUser, LoginUser, SyncProgress, SyncCollectibles, GetPlayerProgress, GetLeaderboard, ListLevels, GetLevel, UpsertLevel"]
     end
     subgraph L1["Capa 1 - Domain (entidades)"]
         direction TB
-        Entities["Board (aggregate root), jerarquia de Cell, LevelDefinition, User, PlayerProgress, puertos de repositorio"]
+        Entities["Board (aggregate root), jerarquia de Cell, LevelDefinition, User, PlayerProgress, puertos de repositorio (incluye ICollectibleRepository)"]
     end
 
     L4 -->|depende de| L3

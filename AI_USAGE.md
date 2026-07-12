@@ -1245,3 +1245,65 @@ Sobre la pregunta de una puntuación "más creativa": el problema de fondo es qu
 
 - Un desempate de ranking es fácil de pasar por alto porque los tests unitarios de `GetLeaderboardUseCase` mockean el repositorio (no ejercitan el `ORDER BY` real) — solo un test de integración contra SQLite real podía detectar o confirmar este comportamiento; se agregó ahí, no como unit test.
 - Vale la pena distinguir explícitamente "arreglar el desempate" (backend, pequeño, sin riesgo) de "rediseñar la fórmula de puntaje" (cliente, más invasivo, con implicaciones de comparabilidad para datos ya sincronizados) antes de estimar el esfuerzo de un cambio — son dos problemas relacionados pero de tamaño muy distinto.
+
+## Consulta #28 — CI en rojo tras agregar niveles nuevos (timeouts de Jest, no bug de contenido)
+
+**Tarea o problema abordado.**
+
+El usuario reportó (con capturas de un run de GitHub Actions fallido) que el pipeline de CI empezó a fallar en `npm test` justo después de subir niveles nuevos al catálogo, y pidió investigar la causa.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio, `git worktree` para reproducir commits específicos de forma aislada, y navegación real a GitHub (Actions, historial de commits, diffs) para confirmar el estado remoto.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Tengo un proyecto que trata de 2 repositorios diferentes [...] La forma en la que se suben los niveles es agregando los niveles a la carpeta levels del backend, pero subí unos niveles y los tests empezaron a fallar. ¿Podrías revisarlos a ver qué está pasando?
+>
+> [tras el diagnóstico] Resuelve el problema del CI primero, me interesa que las pruebas todas estén en verde, ya luego solucionamos lo de los tiempos de carga.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se descartaron dos hipótesis antes de confirmar la causa real: (1) que los niveles nuevos violaran algún límite de celdas por flecha — descartado leyendo `arrowPlacementValidator.ts`, que no tiene máximo; (2) que `LevelSolvabilityValidator` (backtracking/DFS) se volviera exponencialmente lento con tableros más grandes — descartado corriendo el algoritmo real contra los niveles nuevos de forma aislada (resolvían en 1–3ms, sin backtracking real).
+
+La causa se confirmó reproduciendo el CI localmente con `git worktree` en el commit exacto que falló y comparándolo contra su commit padre: con el catálogo viejo, `npm test` completo pasaba en un tiempo razonable; con los niveles nuevos (tableros mucho más grandes), varias suites fallaban por `Exceeded timeout of 5000ms` — incluyendo suites que ni siquiera tocan el catálogo de niveles (`auth.spec.ts`), lo que apuntaba a contención de CPU entre workers paralelos de Jest, no a un bug de contenido.
+
+Fix aplicado en `jest.config.ts` (`testTimeout: 20000`) y en `.github/workflows/ci.yml` (`npm test -- --maxWorkers=2`, acorde a los 2 vCPU reales de `ubuntu-latest`). Al aplicar el fix salió a la luz un bug real independiente: un test tenía el tamaño del catálogo hardcodeado en vez de derivarlo del directorio real — se corrigió para contar los `.json` dinámicamente.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- El usuario pidió explícitamente diferir el arreglo de raíz (transacción SQLite única en el seed) para después, y aprobar el commit/push solo tras confirmar en el chat.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un timeout de test no siempre significa "código lento" en el sentido algorítmico — aquí el cuello de botella real era contención de recursos entre ejecuciones paralelas, no el trabajo de cada ejecución individual (confirmado corriendo `auth.spec.ts` en aislamiento: pasaba rápido tanto antes como después de los niveles nuevos).
+- Subir el timeout por defecto de Jest es un parche legítimo pero no resuelve la causa raíz (cada archivo de test sigue re-sembrando el catálogo completo desde cero); queda documentado como deuda técnica pendiente.
+- Una aserción hardcodeada sobre el tamaño del catálogo es un patrón de fallo recurrente: cada vez que el catálogo cambia de tamaño (crece o se reduce), vale la pena un grep sistemático de conteos fijos en los tests antes de dar por cerrado el cambio.
+
+## Consulta #29 — Sincronización de coleccionables desbloqueados entre dispositivos
+
+> **Nota de procedencia:** esta entrada se redactó reconstruyendo el prompt a partir del commit que introdujo `ICollectibleRepository`/`SqliteCollectibleRepository`/`SyncCollectiblesUseCase`, no de una transcripción literal de la sesión original — quien ejecutó esa consulta debería reemplazar el prompt de abajo por el texto real si lo conserva.
+
+**Tarea o problema abordado.**
+
+El cliente ya rastreaba coleccionables desbloqueados localmente, pero ese progreso no viajaba con el jugador entre dispositivos ni sobrevivía a una reinstalación: al igual que ocurría con el progreso de niveles antes de la sincronización bidireccional, un coleccionable desbloqueado en un dispositivo no aparecía en otro. Se necesitaba un mecanismo de persistencia y fusión en el servidor equivalente al que ya existe para `PlayerProgress`.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic).
+
+**Prompt o instrucción proporcionada (paráfrasis reconstruida, no verbatim — ver nota de procedencia arriba).**
+
+> Los coleccionables que el jugador desbloquea en el cliente solo se guardan localmente, no se sincronizan con el servidor. Necesito una tabla nueva y un endpoint para persistirlos y fusionarlos por usuario, siguiendo el mismo patrón de puertos/casos de uso que ya usamos para el progreso: un `ICollectibleRepository` en el dominio, su implementación de persistencia, un caso de uso que reciba los IDs desbloqueados del cliente y los fusione con lo ya guardado (sin duplicados), y que `GET /progress` devuelva también la lista de coleccionables junto con el progreso de niveles.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se agregó el almacenamiento de coleccionables (`user_collectibles`), el puerto `ICollectibleRepository` (`findAllByUser`, `mergeForUser`) y su adaptador de persistencia, que fusiona de forma idempotente (reenviar un ID ya guardado no lo duplica). `SyncCollectiblesUseCase` expone esa fusión como caso de uso, montado en `POST /progress/collectibles/sync` protegido por JWT. `GetPlayerProgressUseCase` se extendió para que `GET /progress` devuelva ambos progresos juntos.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- No documentado en el historial disponible para esta entrada (ver nota de procedencia).
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- No documentado en el historial disponible para esta entrada (ver nota de procedencia). Se sugiere completar esta sección con los aprendizajes reales si quien implementó el cambio los recuerda.

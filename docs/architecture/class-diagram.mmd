@@ -137,6 +137,11 @@ classDiagram
         +sign(payload) string
         +verify(token) Payload
     }
+    class ICollectibleRepository {
+        <<interface>>
+        +findAllByUser(userId) string[]
+        +mergeForUser(userId, collectibleIds) string[]
+    }
 
     %% ----- Domain: factories, builders, rules, services -----
     class CellFactory {
@@ -198,6 +203,10 @@ classDiagram
     class UpsertLevelUseCase {
         +execute(dto) LevelDto
     }
+    class SyncCollectiblesUseCase {
+        +execute(userId, collectibleIds) CollectiblesSyncResultDto
+    }
+    SyncCollectiblesUseCase ..> ICollectibleRepository
 
     RegisterUserUseCase ..> IUserRepository
     RegisterUserUseCase ..> IPasswordHasher
@@ -218,6 +227,7 @@ classDiagram
     class SqliteUserRepository
     class SqliteLevelRepository
     class SqliteProgressRepository
+    class SqliteCollectibleRepository
     class BcryptPasswordHasher
     class JwtTokenService
     class LevelJsonMapper {
@@ -228,6 +238,7 @@ classDiagram
     IUserRepository <|.. SqliteUserRepository
     ILevelRepository <|.. SqliteLevelRepository
     IProgressRepository <|.. SqliteProgressRepository
+    ICollectibleRepository <|.. SqliteCollectibleRepository
     IPasswordHasher <|.. BcryptPasswordHasher
     ITokenService <|.. JwtTokenService
     SqliteLevelRepository ..> LevelJsonMapper : uses (Adapter)
@@ -242,9 +253,11 @@ classDiagram
     AppContainer ..> SqliteUserRepository
     AppContainer ..> SqliteLevelRepository
     AppContainer ..> SqliteProgressRepository
+    AppContainer ..> SqliteCollectibleRepository
     AppContainer ..> RegisterUserUseCase
     AppContainer ..> LoginUserUseCase
     AppContainer ..> SyncProgressUseCase
+    AppContainer ..> SyncCollectiblesUseCase
     AppContainer ..> GetPlayerProgressUseCase
     AppContainer ..> GetLeaderboardUseCase
     AppContainer ..> ListLevelsUseCase
@@ -258,6 +271,6 @@ classDiagram
     classDef application fill:#e8eef8,stroke:#1565c0,color:#0d2a4d
     classDef infrastructure fill:#f8e8ee,stroke:#ad1457,color:#4d0d24
 
-    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
-    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
-    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure
+    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,ICollectibleRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
+    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,SyncCollectiblesUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
+    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,SqliteCollectibleRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure

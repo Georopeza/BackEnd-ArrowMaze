@@ -15,8 +15,8 @@ leaderboard, following **Clean Architecture** and **SOLID** principles.
 
 All four layers are implemented and covered by tests: JWT authentication, level
 CRUD with solvability validation, bidirectional progress sync (push on victory,
-pull on login), a global leaderboard, and SQLite-backed persistence that survives
-process restarts.
+pull on login), collectible unlock sync, a global leaderboard, and persistence
+(SQLite or Postgres) that survives process restarts.
 
 ## Architecture
 
@@ -28,23 +28,23 @@ flowchart TB
     subgraph L4["Infrastructure (frameworks & drivers)"]
         direction TB
         Express["Express server, routes, middlewares"]
-        Sqlite["SQLite repositories (better-sqlite3)"]
+        Sqlite["SQLite/Postgres repositories, incl. *CollectibleRepository"]
         Security["BcryptPasswordHasher, JwtTokenService"]
         Mappers["LevelJsonMapper"]
     end
     subgraph L3["Interface Adapters"]
         direction TB
-        Controllers["Route handlers (auth, levels, progress, leaderboard)"]
+        Controllers["Route handlers (auth, levels, progress incl. collectibles, leaderboard)"]
     end
     subgraph L2["Application (use cases)"]
         direction TB
-        UseCases["RegisterUser, LoginUser, SyncProgress, GetPlayerProgress,
+        UseCases["RegisterUser, LoginUser, SyncProgress, SyncCollectibles, GetPlayerProgress,
         GetLeaderboard, ListLevels, GetLevel, UpsertLevel"]
     end
     subgraph L1["Domain (entities)"]
         direction TB
         Entities["Board aggregate, Cell hierarchy, LevelDefinition,
-        User, PlayerProgress, repository ports"]
+        User, PlayerProgress, repository ports incl. ICollectibleRepository"]
     end
 
     L4 --> L3 --> L2 --> L1
@@ -70,7 +70,7 @@ src/domain/
 ├── builders/         # LevelBuilder (Builder)
 ├── services/         # LevelSolvabilityValidator, LevelActionService, LevelToBoardMapper
 ├── rules/            # BaseLevelProcessor (Template Method), FireArrowLevelProcessor
-├── repositories/     # ILevelRepository, IUserRepository, IProgressRepository (ports)
+├── repositories/     # ILevelRepository, IUserRepository, IProgressRepository, ICollectibleRepository (ports)
 └── tests/            # BoardTestBuilder, BoardObjectMother, BoardTestingApi (test-only helpers)
 ```
 
@@ -214,6 +214,11 @@ classDiagram
         +sign(payload) string
         +verify(token) Payload
     }
+    class ICollectibleRepository {
+        <<interface>>
+        +findAllByUser(userId) string[]
+        +mergeForUser(userId, collectibleIds) string[]
+    }
 
     class CellFactory {
         +register(type, factoryFn) void
@@ -253,6 +258,8 @@ classDiagram
     class ListLevelsUseCase { +execute() LevelDto[] }
     class GetLevelUseCase { +execute(id) LevelDto }
     class UpsertLevelUseCase { +execute(dto) LevelDto }
+    class SyncCollectiblesUseCase { +execute(userId, collectibleIds) CollectiblesSyncResultDto }
+    SyncCollectiblesUseCase ..> ICollectibleRepository
 
     RegisterUserUseCase ..> IUserRepository
     RegisterUserUseCase ..> IPasswordHasher
@@ -272,6 +279,7 @@ classDiagram
     class SqliteUserRepository
     class SqliteLevelRepository
     class SqliteProgressRepository
+    class SqliteCollectibleRepository
     class BcryptPasswordHasher
     class JwtTokenService
     class LevelJsonMapper {
@@ -282,6 +290,7 @@ classDiagram
     IUserRepository <|.. SqliteUserRepository
     ILevelRepository <|.. SqliteLevelRepository
     IProgressRepository <|.. SqliteProgressRepository
+    ICollectibleRepository <|.. SqliteCollectibleRepository
     IPasswordHasher <|.. BcryptPasswordHasher
     ITokenService <|.. JwtTokenService
     SqliteLevelRepository ..> LevelJsonMapper : uses (Adapter)
@@ -295,9 +304,11 @@ classDiagram
     AppContainer ..> SqliteUserRepository
     AppContainer ..> SqliteLevelRepository
     AppContainer ..> SqliteProgressRepository
+    AppContainer ..> SqliteCollectibleRepository
     AppContainer ..> RegisterUserUseCase
     AppContainer ..> LoginUserUseCase
     AppContainer ..> SyncProgressUseCase
+    AppContainer ..> SyncCollectiblesUseCase
     AppContainer ..> GetPlayerProgressUseCase
     AppContainer ..> GetLeaderboardUseCase
     AppContainer ..> ListLevelsUseCase
@@ -307,9 +318,9 @@ classDiagram
     classDef domain fill:#e8f4ea,stroke:#2e7d32,color:#1b3a1e
     classDef application fill:#e8eef8,stroke:#1565c0,color:#0d2a4d
     classDef infrastructure fill:#f8e8ee,stroke:#ad1457,color:#4d0d24
-    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
-    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
-    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure
+    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,ICollectibleRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
+    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,SyncCollectiblesUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
+    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,SqliteCollectibleRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure
 ```
 
 ## Design Patterns
@@ -400,8 +411,12 @@ The suite covers all four layers: domain unit tests (`tests/unit/domain/`), use-
 unit tests with mocked repositories (`tests/unit/application/`), HTTP integration tests
 with supertest (`tests/integration/`, including auth, levels, progress/leaderboard, and
 SQLite persistence across simulated process restarts), and an end-to-end catalog
-playability test (`tests/e2e/`). CI (`.github/workflows/ci.yml`) runs lint, build and
-test on every PR/push to `main`.
+playability test (`tests/e2e/`). CI (`.github/workflows/ci.yml`) runs lint, build, test
+(`--maxWorkers=2`, to match the runner's 2 vCPUs and avoid the level-catalog seeding in
+several integration tests starving other parallel workers of CPU) and a final step that
+verifies the shared contract fixtures under `docs/contract/fixtures/` are still in sync
+with the frontend repo (`scripts/check-contract-fixtures-sync.sh`), on every PR/push to
+`main` and `develop`.
 
 ## AI Usage Documentation
 
