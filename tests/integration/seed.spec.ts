@@ -15,7 +15,9 @@ describe('Level catalog seed', () => {
     expect(response.body.length).toBe(LEVEL_SEED_CATALOG_SIZE);
     expect(response.body.length).toBe(LEVEL_SEED_CATALOG.length);
     expect(response.body.map((l: { id: string }) => l.id)).toContain('level-1');
-    expect(response.body.map((l: { id: string }) => l.id)).toContain('level-20');
+    expect(response.body.map((l: { id: string }) => l.id)).toContain(
+      LEVEL_SEED_CATALOG[LEVEL_SEED_CATALOG.length - 1].id,
+    );
   });
 
   it('should_start_empty_when_seedLevels_is_disabled', async () => {
