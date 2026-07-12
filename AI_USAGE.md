@@ -1157,3 +1157,54 @@ Se escribió un validador temporal que revisó, para cada uno de los 22 niveles:
 
 - Ningún paso del arranque del servidor valida hoy el esquema, el solapamiento de celdas ni la solvabilidad de los niveles al cargarlos (`parseLevelJsonFile.ts` solo hace `JSON.parse`); un nivel corrupto se serviría igual sin aviso. Queda como mejora sugerida (no aplicada) convertir este validador en un test o chequeo de arranque/CI.
 - Antes de reportar un hallazgo de validación hay que confirmar la regla real del dominio, no la intuición: asumir que el cuerpo de una flecha debe alinearse con su dirección de disparo habría producido un reporte de "10 niveles rotos" completamente falso.
+
+## Consulta #26 — Conteo de catálogo hardcodeado en tests y arranque no resiliente a niveles rotos
+
+**Tarea o problema abordado.**
+
+El usuario señaló dos problemas relacionados en `LEVEL_SEED_CATALOG`: (1) el test `should_contain_the_currently_curated_levels` afirmaba `expect(LEVEL_SEED_CATALOG_SIZE).toBe(22)` con un número fijo, que se rompería apenas se agregara o quitara un nivel de `levels/`; (2) preguntó qué pasaría si se subieran niveles nuevos junto con algunos no resolubles (p. ej. 30 niveles, 15 sin solución) — si el número debía derivarse de la carpeta, y cómo debía comportarse el sistema ante contenido inválido.
+
+**Herramienta de IA utilizada.**
+
+- Claude Code (Anthropic), modelo Sonnet 5, sesión interactiva de terminal con acceso de lectura/escritura al repositorio, ejecución de la suite de tests y arranque real del servidor (`npm run dev`) para reproducir el comportamiento antes y después del fix.
+
+**Prompt o instrucción proporcionada (transcripción literal o paráfrasis fiel).**
+
+> Hay un tema en las pruebas de LEVEL SEED CATALOG, la prueba should_contain_the_currently_curated_levels pone que el número de niveles debe ser 22, pero en verdad ese número puede ser variable con el tiempo [...] como puedo solucionar que este número vaya de la mano con la cantidad de niveles de la carpeta o, si el test debe ser diferente, porque puede darse el caso de que, yo suba 30 niveles, pero 15 no tengan solución, que puedo hacer?
+>
+> Ok, voy a subir un nivel malo [...] crea un nivel que no tenga solución [...] reinicia el servidor e inclúyelo en la carpeta de niveles, y prueba el comportamiento que me estás comentando.
+>
+> Sí, hazlo [implementar el fix de resiliencia] y reinicia el servidor.
+
+**Resultado obtenido (fragmento de código, diseño, explicación).**
+
+Se investigó el código real antes de proponer nada: `LEVEL_SEED_CATALOG_SIZE` ya se derivaba de `LEVEL_SEED_CATALOG.length` (`levelSeedCatalog.ts`), así que el único punto hardcodeado era la aserción del test. Se cambió por una comparación contra `listLevelJsonFiles().length` (el conteo real de `levels/*.json`), eliminando el número fijo sin perder cobertura.
+
+Para la segunda pregunta, se leyó `syncLevelCatalogFromDirectory.ts`/`seedLevelCatalog.ts` y se confirmó que el arranque (`seedLevelCatalog` → `syncLevelCatalogFromDirectory`) procesaba los archivos en un bucle **sin try/catch**, documentado explícitamente como intencional ("Propaga errores de dominio [...] para fallar el bootstrap"). Antes de tocar nada se reprodujo el problema en vivo: se creó `levels/level-99.json` con dos flechas apuntándose entre sí (bloqueo mutuo permanente, sin salida posible), se verificó de forma aislada con `LevelSolvabilityValidator.isPlayable()` que efectivamente era `false`, y se arrancó el servidor con ese archivo junto a los 22 buenos — el proceso murió con `LevelNotSolvableError` sin llegar a escuchar en el puerto, tumbando también los 22 niveles válidos.
+
+Se corrigió haciendo que `syncLevelCatalogFromDirectory` capture el error **por archivo** (igual que ya hacía el watcher de hot-reload, `LevelCatalogFileSubject.notifyObservers`) en vez de abortar en el primero que falle:
+
+```ts
+for (const filePath of files) {
+  try {
+    const saved = await upsertLevelFromFile(container, filePath);
+    levelIds.push(saved.id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    failed.push({ filePath, fileName: path.basename(filePath), message });
+    console.error(`Level catalog seed: skipping "${path.basename(filePath)}" — ${message}`);
+  }
+}
+```
+
+`SyncLevelCatalogResult`/`SeedLevelCatalogResult` ganaron un campo `failed: SyncLevelCatalogFailure[]`, y `server.ts` ahora loguea cada archivo omitido con su motivo tras el seed. Se repitió la misma prueba en vivo con el fix aplicado: el log mostró `Level seed: 22/23 niveles cargados` + el detalle de `level-99.json`, el servidor sí quedó escuchando, `GET /health` respondió `{"status":"ok"}`, `GET /levels` devolvió los 22 niveles válidos, y `GET /levels/level-99` devolvió `404`.
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Ninguna; se verificó con `npm run lint`, `npm run build` y `npm test` (173/173 tests, incluyendo el test de regresión nuevo `should_skip_an_unsolvable_level_and_still_sync_the_rest`) y con la reproducción manual en vivo (arranque real con y sin el fix) descrita arriba.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- El mismo tipo de error (`LevelNotSolvableError`) se comportaba de forma opuesta según el momento: resiliente en el watcher de hot-reload, fatal en el arranque. Ningún test cubría el camino de arranque con un archivo roto — el test suite validaba la solvabilidad de cada nivel curado (`it.each`), pero no el comportamiento del *pipeline* de seed ante un nivel inválido.
+- Reproducir el bug en vivo (crear el archivo, arrancar el servidor, ver el crash real) antes de escribir el fix, y repetir la misma reproducción después, dio una confirmación mucho más sólida que solo leer el código o confiar en los tests unitarios — especialmente para un comportamiento de arranque que ningún test cubría todavía.
+- Queda una decisión de producto pendiente, no resuelta aquí: el arranque ahora es resiliente por archivo, pero sigue sin existir una alerta activa (más allá del log de consola) si un nivel queda fuera del catálogo servido; una futura mejora sería exponer `failed` en algún endpoint de salud/diagnóstico en vez de solo loguearlo.
