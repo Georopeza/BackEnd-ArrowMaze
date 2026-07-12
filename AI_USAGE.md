@@ -1236,7 +1236,7 @@ Sobre la pregunta de una puntuación "más creativa": el problema de fondo es qu
 
 **Tarea o problema abordado.**
 
-El usuario reportó (con capturas de un run de GitHub Actions fallido) que el pipeline de CI empezó a fallar en `npm test` justo después de subir niveles nuevos al catálogo, y pidió investigar la causa.
+El pipeline de CI empezó a fallar en `npm test` justo después de subir niveles nuevos al catálogo, y se investigó la causa.
 
 **Herramienta de IA utilizada.**
 
