@@ -1,5 +1,15 @@
 # Registro de uso de IA
 
+## Herramientas utilizadas
+
+| Herramienta | Versión / modelo | Rol en el flujo de trabajo |
+|---|---|---|
+| GitHub Copilot Chat | Raptor mini Preview; luego Claude Haiku 4.5 | Generación inicial de código de dominio puro y de infraestructura HTTP a partir de prompts detallados dentro del IDE. |
+| Cursor Agent (Composer) / Cursor AI | Integrado en el IDE | Implementación asistida con acceso de lectura/escritura al repositorio y ejecución de tests, usado en paralelo por distintos miembros del equipo durante Sprint 1. |
+| Claude Code | Claude Sonnet 5 (mayoría de sesiones); Claude Opus 4.8 en una sesión autónoma nocturna puntual | Agente principal desde media sesión en adelante: sesiones interactivas de terminal con acceso de lectura/escritura al repositorio, ejecución real de tests/build/servidor, `git worktree` para reproducir commits aislados, y modo de planificación explícita para cambios de mayor alcance antes de tocar código. |
+
+## Registro de uso por tarea
+
     ## Tarea 1: Diseño del modelo de dominio puro con Clean Architecture y Domain-Driven Design (DDD)
 
       ## Tarea o problema abordado:
@@ -311,30 +321,6 @@
 
   ## Lecciones aprendidas o limitaciones identificadas:
     - Confirma la lección de la Tarea 6: la deuda "documentada como fuera de alcance" solo deja de ser invisible cuando algo la ejercita automáticamente. Verificar `npm run lint` en local no es lo mismo que ver la ejecución real de GitHub Actions pasar — el equipo debería revisar el estado de los checks en GitHub, no solo confiar en los comandos corridos localmente, antes de dar una tarea por cerrada.
-
-## Evaluación crítica
-
-   ## Porcentaje aproximado del código que contó con asistencia de IA:
-  - 100% del código inicial de `User`, `PlayerProgress`, interfaces de repositorio, `LevelBuilder` y `BaseLevelProcessor` fue generado por IA.
-  - 30% del código de `LevelDefinition` fue corregido manualmente para aceptar 6 parámetros en lugar de 4.
-  - 80% de la documentación y comentarios fue generado por IA y validado manualmente.
-  - 100% de la Capa 2 (Casos de Uso, Tarea 5: DTOs, puertos, errores tipados, 7 casos de uso y sus 16 tests) fue generado por IA a partir de un plan explícito revisado antes de implementar; 0% requirió corrección manual posterior más allá del fixture de test descrito en la Tarea 5.
-
-
-   ## Casos donde la IA produjo resultados incorrectos o subóptimos y cómo se detectaron y corregidos:
-  1) La IA no creó la carpeta `src/domain/entities` en la primera aplicación (fue un error de omisión en la ejecución manual). Se detectó porque se verificó manualmente la estructura creada en el repositorio. Se corrigió creando manualmente la carpeta faltante.
-  2) Se detectó la duplicación del contrato `ILevelRepository` en `LevelDefinition.ts`; se corrigió moviendo el contrato a `src/domain/repositories/ILevelRepository.ts`.
-  3) El Builder generaba 6 argumentos para `LevelDefinition` (incluyendo `maxMoves` y `maxTimeInSeconds`), pero el constructor solo aceptaba 4. Se detectó durante la compilación TypeScript. Se corrigió actualizando el constructor de `LevelDefinition` para aceptar los 6 parámetros, manteniéndolos como propiedades readonly en la clase.
-  4) (Tarea 5) `LevelJsonMapper.ts`, generado en la Tarea 3 sobre una rama distinta, quedó referenciando una clase (`BoardGroup`) que ya no existía tras la refactorización de dominio de la Tarea 4 en otra rama — un caso de divergencia entre ramas, no un error de la IA en el momento en que se generó cada una, pero que solo se detectó al fusionarlas y compilar.
-  - No hubo errores conceptuales en el diseño de patrones o la arquitectura propuesta.
-
-   ## Reflexión del equipo sobre el impacto de la IA en la productividad y calidad del código:
-  - El impacto fue ALTAMENTE POSITIVO: la IA generó la mayoría del código de dominio manteniendo principios SOLID y patrones GoF coherentes.
-  - La productividad aumentó significativamente: se generaron 7 archivos complejos con patrones (Builder, Template Method, Strategy) completamente documentados.
-  - La calidad del código es muy alta: el dominio es puro, testeable y completamente desacoplado de frameworks o persistencia.
-  - La principal lección fue la necesidad de revisar la coherencia entre patrones creacionales (Builder) y sus constructores target.
-  - Recomendación: usar IA para generar el código inicial y los patrones, pero siempre compilar y validar la coherencia de firmas de funciones.
-  - (Tarea 5) Cuando distintas ramas evolucionan el dominio en paralelo, la IA es especialmente útil para el trabajo mecánico de fusión (resolver conflictos, adaptar un mapper a una interfaz que cambió), pero el equipo debe seguir corriendo `build`/`lint`/`test` tras cada fusión en vez de confiar en que cada rama "ya estaba verde" por separado.
 
 ---
 
@@ -1307,3 +1293,28 @@ Se agregó el almacenamiento de coleccionables (`user_collectibles`), el puerto 
 **Lecciones aprendidas o limitaciones identificadas.**
 
 - No documentado en el historial disponible para esta entrada (ver nota de procedencia). Se sugiere completar esta sección con los aprendizajes reales si quien implementó el cambio los recuerda.
+
+---
+
+## Evaluación crítica
+
+**Porcentaje aproximado del código que contó con asistencia de IA.**
+
+- La mayor parte del proyecto: prácticamente el 100% del código de dominio (Capa 1), casos de uso (Capa 2) y adaptadores HTTP/persistencia (Capas 3-4) se generó con asistencia de IA a partir de prompts detallados, con validación humana posterior mediante compilación (`tsc`), lint y la suite de tests.
+- El único código que no partió de una generación de IA es la decisión de diseño y las correcciones puntuales descritas en cada consulta ("Modificaciones realizadas por el equipo"), que en varias entradas es "ninguna" (el resultado se aceptó tal cual tras revisión) y en otras corrige un detalle específico (por ejemplo, la Consulta #4 en las Tareas iniciales, donde el constructor de `LevelDefinition` tuvo que ajustarse manualmente para aceptar 6 parámetros).
+- Estimado global: 90-95% del código final tiene asistencia de IA en su primera versión; el 5-10% restante corresponde a ajustes manuales puntuales detectados en compilación/tests.
+
+**Casos donde la IA produjo resultados incorrectos o subóptimos y cómo se detectaron y corrigieron.**
+
+- Errores de andamiaje temprano (Tareas 1-5): carpetas no creadas, un contrato duplicado (`ILevelRepository`), una discrepancia de aridad en el constructor de `LevelDefinition` — todos detectados por compilación TypeScript o por verificación manual de la estructura de archivos, y corregidos de inmediato.
+- Divergencia entre ramas (Tarea 5): `LevelJsonMapper.ts` quedó referenciando una clase (`BoardGroup`) eliminada en otra rama en paralelo — no un error de la IA en el momento en que generó cada pieza, sino un caso que solo un `build` tras la fusión pudo detectar.
+- Timeouts de CI tras crecer el catálogo de niveles (Consulta #28): la primera hipótesis intuitiva (niveles nuevos con backtracking exponencialmente lento) se descartó corriendo el algoritmo real de forma aislada antes de aceptarla — evitando un fix mal dirigido.
+- Aserciones de test con conteos de catálogo hardcodeados (Consultas #26, #28, y la reducción de niveles documentada en `main`): el mismo tipo de fragilidad reapareció más de una vez en archivos de test distintos: arreglar uno no garantizaba que los demás estuvieran arreglados, y solo se detectó corriendo la suite completa después de cada cambio de tamaño de catálogo.
+- Ningún caso detectado de error conceptual de arquitectura o de un patrón de diseño mal aplicado: los errores encontrados fueron siempre de coherencia mecánica (firmas, imports, aserciones desactualizadas), no de diseño.
+
+**Reflexión del equipo sobre el impacto de la IA en la productividad y calidad del código.**
+
+- El impacto fue altamente positivo en velocidad: features completas (persistencia SQLite, sincronización de progreso bidireccional, coleccionables, hot-reload del catálogo) se implementaron con tests de principio a fin en sesiones individuales.
+- La calidad del código generado fue consistentemente alta cuando el prompt incluía contexto suficiente (arquitectura ya definida, convenciones del repo, ejemplos existentes) y bajaba notablemente cuando el prompt era vago — la lección recurrente en todo el proyecto es que la inversión en un buen prompt (contexto + restricciones explícitas) se paga sola en menos iteraciones de corrección.
+- Verificar en vivo (correr tests, arrancar el servidor, reproducir el bug antes y después del fix) resultó más confiable que solo leer el código o confiar en la razón dada por la IA — varias consultas documentan explícitamente haber descartado una hipótesis de causa raíz plausible pero incorrecta gracias a esa verificación.
+- La disciplina de exigir confirmación explícita antes de comitear/pushear (adoptada de forma creciente en las consultas más recientes) evitó que cambios exploratorios o hipótesis descartadas llegaran a la rama compartida.
