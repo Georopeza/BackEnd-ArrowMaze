@@ -2,6 +2,7 @@ import { createDatabase } from '../persistence/sqlite/Database';
 import { SqliteUserRepository } from '../persistence/sqlite/SqliteUserRepository';
 import { SqliteLevelRepository } from '../persistence/sqlite/SqliteLevelRepository';
 import { SqliteProgressRepository } from '../persistence/sqlite/SqliteProgressRepository';
+import { SqliteCollectibleRepository } from '../persistence/sqlite/SqliteCollectibleRepository';
 import { BcryptPasswordHasher } from '../security/BcryptPasswordHasher';
 import { JwtTokenService } from '../security/JwtTokenService';
 import { LevelJsonMapper } from '../mappers/LevelJsonMapper';
@@ -10,6 +11,7 @@ import { ITokenService } from '../../application/ports/ITokenService';
 import { RegisterUserUseCase } from '../../application/use-cases/RegisterUserUseCase';
 import { LoginUserUseCase } from '../../application/use-cases/LoginUserUseCase';
 import { SyncProgressUseCase } from '../../application/use-cases/SyncProgressUseCase';
+import { SyncCollectiblesUseCase } from '../../application/use-cases/SyncCollectiblesUseCase';
 import { GetPlayerProgressUseCase } from '../../application/use-cases/GetPlayerProgressUseCase';
 import { GetLeaderboardUseCase } from '../../application/use-cases/GetLeaderboardUseCase';
 import { ListLevelsUseCase } from '../../application/use-cases/ListLevelsUseCase';
@@ -27,6 +29,7 @@ export interface AppContainer {
   registerUser: RegisterUserUseCase;
   loginUser: LoginUserUseCase;
   syncProgress: SyncProgressUseCase;
+  syncCollectibles: SyncCollectiblesUseCase;
   getPlayerProgress: GetPlayerProgressUseCase;
   getLeaderboard: GetLeaderboardUseCase;
   listLevels: ListLevelsUseCase;
@@ -49,6 +52,7 @@ export function createContainer(jwtSecret: string, dbPath = ':memory:'): AppCont
   const userRepository = new SqliteUserRepository(db);
   const levelRepository = new SqliteLevelRepository(db);
   const progressRepository = new SqliteProgressRepository(db);
+  const collectibleRepository = new SqliteCollectibleRepository(db);
 
   const passwordHasher = new BcryptPasswordHasher();
   const tokenService = new JwtTokenService(jwtSecret);
@@ -59,7 +63,8 @@ export function createContainer(jwtSecret: string, dbPath = ':memory:'): AppCont
     registerUser: new RegisterUserUseCase(userRepository, passwordHasher),
     loginUser: new LoginUserUseCase(userRepository, passwordHasher, tokenService),
     syncProgress: new SyncProgressUseCase(progressRepository, levelRepository),
-    getPlayerProgress: new GetPlayerProgressUseCase(progressRepository),
+    syncCollectibles: new SyncCollectiblesUseCase(collectibleRepository),
+    getPlayerProgress: new GetPlayerProgressUseCase(progressRepository, collectibleRepository),
     getLeaderboard: new GetLeaderboardUseCase(progressRepository),
     listLevels: new ListLevelsUseCase(levelRepository, levelJsonMapper),
     getLevel: new GetLevelUseCase(levelRepository, levelJsonMapper),
