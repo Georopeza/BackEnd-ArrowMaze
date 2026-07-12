@@ -1,0 +1,25 @@
+{
+  "id": "level-31",
+  "name": "El Diamante de Arrowía",
+  "levelNumber": 31,
+  "difficulty": "EXPERT",
+  "maxMoves": 12,
+  "maxTimeInSeconds": 300,
+  "width": 18,
+  "height": 18,
+  "exit": { "row": 1, "col": 1 },
+  "arrows": [
+    { "id": "p1", "direction": "LEFT", "head": { "row": 3, "col": 6 }, "body": [{ "row": 3, "col": 7 }, { "row": 3, "col": 8 }, { "row": 3, "col": 9 }, { "row": 3, "col": 10 }, { "row": 3, "col": 11 }] },
+    { "id": "p2", "direction": "RIGHT", "head": { "row": 4, "col": 11 }, "body": [{ "row": 4, "col": 6 }, { "row": 4, "col": 7 }, { "row": 4, "col": 8 }, { "row": 4, "col": 9 }, { "row": 4, "col": 10 }] },
+    { "id": "p3", "direction": "LEFT", "head": { "row": 5, "col": 6 }, "body": [{ "row": 5, "col": 7 }, { "row": 5, "col": 8 }, { "row": 5, "col": 9 }, { "row": 5, "col": 10 }, { "row": 5, "col": 11 }] },
+    { "id": "p4", "direction": "RIGHT", "head": { "row": 6, "col": 14 }, "body": [{ "row": 6, "col": 3 }, { "row": 6, "col": 4 }, { "row": 6, "col": 5 }, { "row": 6, "col": 6 }, { "row": 6, "col": 7 }, { "row": 6, "col": 8 }, { "row": 6, "col": 9 }, { "row": 6, "col": 10 }, { "row": 6, "col": 11 }, { "row": 6, "col": 12 }, { "row": 6, "col": 13 }] },
+    { "id": "p5", "direction": "LEFT", "head": { "row": 7, "col": 3 }, "body": [{ "row": 7, "col": 4 }, { "row": 7, "col": 5 }, { "row": 7, "col": 6 }, { "row": 7, "col": 7 }, { "row": 7, "col": 8 }, { "row": 7, "col": 9 }, { "row": 7, "col": 10 }, { "row": 7, "col": 11 }, { "row": 7, "col": 12 }, { "row": 7, "col": 13 }, { "row": 7, "col": 14 }] },
+    { "id": "p6", "direction": "RIGHT", "head": { "row": 8, "col": 14 }, "body": [{ "row": 8, "col": 3 }, { "row": 8, "col": 4 }, { "row": 8, "col": 5 }, { "row": 8, "col": 6 }, { "row": 8, "col": 7 }, { "row": 8, "col": 8 }, { "row": 8, "col": 9 }, { "row": 8, "col": 10 }, { "row": 8, "col": 11 }, { "row": 8, "col": 12 }, { "row": 8, "col": 13 }] },
+    { "id": "p7", "direction": "LEFT", "head": { "row": 9, "col": 3 }, "body": [{ "row": 9, "col": 4 }, { "row": 9, "col": 5 }, { "row": 9, "col": 6 }, { "row": 9, "col": 7 }, { "row": 9, "col": 8 }, { "row": 9, "col": 9 }, { "row": 9, "col": 10 }, { "row": 9, "col": 11 }, { "row": 9, "col": 12 }, { "row": 9, "col": 13 }, { "row": 9, "col": 14 }] },
+    { "id": "p8", "direction": "RIGHT", "head": { "row": 10, "col": 14 }, "body": [{ "row": 10, "col": 3 }, { "row": 10, "col": 4 }, { "row": 10, "col": 5 }, { "row": 10, "col": 6 }, { "row": 10, "col": 7 }, { "row": 10, "col": 8 }, { "row": 10, "col": 9 }, { "row": 10, "col": 10 }, { "row": 10, "col": 11 }, { "row": 10, "col": 12 }, { "row": 10, "col": 13 }] },
+    { "id": "p9", "direction": "LEFT", "head": { "row": 11, "col": 3 }, "body": [{ "row": 11, "col": 4 }, { "row": 11, "col": 5 }, { "row": 11, "col": 6 }, { "row": 11, "col": 7 }, { "row": 11, "col": 8 }, { "row": 11, "col": 9 }, { "row": 11, "col": 10 }, { "row": 11, "col": 11 }, { "row": 11, "col": 12 }, { "row": 11, "col": 13 }, { "row": 11, "col": 14 }] },
+    { "id": "p10", "direction": "RIGHT", "head": { "row": 12, "col": 11 }, "body": [{ "row": 12, "col": 6 }, { "row": 12, "col": 7 }, { "row": 12, "col": 8 }, { "row": 12, "col": 9 }, { "row": 12, "col": 10 }] },
+    { "id": "p11", "direction": "LEFT", "head": { "row": 13, "col": 6 }, "body": [{ "row": 13, "col": 7 }, { "row": 13, "col": 8 }, { "row": 13, "col": 9 }, { "row": 13, "col": 10 }, { "row": 13, "col": 11 }] },
+    { "id": "p12", "direction": "RIGHT", "head": { "row": 14, "col": 11 }, "body": [{ "row": 14, "col": 6 }, { "row": 14, "col": 7 }, { "row": 14, "col": 8 }, { "row": 14, "col": 9 }, { "row": 14, "col": 10 }] }
+  ]
+}
