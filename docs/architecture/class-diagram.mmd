@@ -42,6 +42,8 @@ classDiagram
     }
     Board "1" o-- "0..*" Arrow : arrows
     Board "1" *-- "many" Cell : grid (walls only)
+    Arrow "1" *-- "1..*" Position : headPosition, occupiedPositions
+    Arrow --> Direction
 
     %% ----- Domain: level & scoring -----
     class Difficulty {
@@ -120,6 +122,7 @@ classDiagram
         +findByUsername(username) User
         +save(user) void
     }
+    IUserRepository ..> User
     class IProgressRepository {
         <<interface>>
         +findByUserAndLevel(userId, levelId) PlayerProgress
@@ -127,6 +130,7 @@ classDiagram
         +save(progress) void
         +getLeaderboardByLevel(levelId, limit) LeaderBoardEntry[]
     }
+    IProgressRepository ..> LeaderBoardEntry
     class IPasswordHasher {
         <<interface>>
         +hash(password) string
@@ -177,6 +181,8 @@ classDiagram
     class LevelActionService {
         +interactWithCell(board, position) void
     }
+    LevelActionService ..> Board
+    FireArrowLevelProcessor ..> LevelActionService : delegates
 
     %% ----- Application: use cases -----
     class RegisterUserUseCase {
