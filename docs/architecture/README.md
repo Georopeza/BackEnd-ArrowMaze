@@ -1,32 +1,32 @@
 # Architecture diagrams
 
-Editable Mermaid sources for the README:
+Editable sources for the README Architecture section.
 
 | File | Purpose |
 |------|---------|
-| [`clean-architecture.mmd`](clean-architecture.mmd) | Four-layer Clean Architecture (dependency rule) |
-| [`class-diagram.mmd`](class-diagram.mmd) | Main classes, UML relations, layer colors, GoF patterns |
+| [`clean-architecture.mmd`](clean-architecture.mmd) | Clean Architecture **concentric onion** (L4⊃L3⊃L2⊃L1), English labels, DIP dashed arrows, dependency rule pointing inward |
+| [`class-diagram.mmd`](class-diagram.mmd) | Main classes, UML relationships, layer colors, GoF patterns |
 
 ## Regenerate README embeds
-
-From the repository root:
 
 ```bash
 python scripts/sync-readme-diagrams.py
 ```
 
-## Optional static PNG export (for deliverables)
-
-If the course requires raster images in addition to Mermaid:
+## Export PNG
 
 ```bash
-npx @mermaid-js/mermaid-cli -i docs/architecture/clean-architecture.mmd -o docs/architecture/clean-architecture.png -b transparent
-npx @mermaid-js/mermaid-cli -i docs/architecture/class-diagram.mmd -o docs/architecture/class-diagram.png -b transparent
+npx --yes @mermaid-js/mermaid-cli@11.4.0 -i docs/architecture/clean-architecture.mmd -o docs/architecture/clean-architecture.png -b white -w 5600 -H 5000
+npx @mermaid-js/mermaid-cli -i docs/architecture/class-diagram.mmd -o docs/architecture/class-diagram.png -b white -w 2800
 ```
 
-Then add to `README.md`:
+## Clean Architecture checklist (rubric)
 
-```markdown
-![Clean Architecture](docs/architecture/clean-architecture.png)
-![Class Diagram](docs/architecture/class-diagram.png)
-```
+- [x] Four concentric layers (domain at the center)
+- [x] Dependency rule: outer → inner only
+- [x] Legend with layer names and source folders
+- [x] Ports and adapters labeled and linked
+- [x] Component → component arrows with English labels
+- [x] DIP shown with dashed `implements` arrows
+- [x] Domain isolation callout (zero external imports)
+- [x] PNG + `.mmd` source in `/docs`

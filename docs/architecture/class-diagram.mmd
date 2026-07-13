@@ -1,10 +1,13 @@
 classDiagram
     direction TB
 
+    %% ============================================================
     %% Arrow Maze Backend — Class Diagram
-    %% Layer colors: green=Domain, blue=Application, orange=Adapters, pink=Infrastructure
-    %% Patterns: Factory Method, Builder, Template Method, Strategy, Adapter,
-    %% Repository/DIP, Observer (catalog hot-reload)
+    %% Colors indicate Clean Architecture layer (see legend below).
+    %% Patterns shown: Factory Method (CellFactory), Builder
+    %% (LevelBuilder), Template Method (BaseLevelProcessor), Adapter
+    %% (LevelJsonMapper), Repository/DIP (I*Repository ports).
+    %% ============================================================
 
     %% ----- Domain: Board aggregate & cell hierarchy -----
     class Cell {
@@ -38,8 +41,11 @@ classDiagram
         +Position[] occupiedPositions
     }
     Board "1" o-- "0..*" Arrow : arrows
-    Board "1" *-- "many" Cell : grid
+    Board "1" *-- "many" Cell : grid (walls only)
+    Arrow "1" *-- "1..*" Position : headPosition, occupiedPositions
+    Arrow --> Direction
 
+    %% ----- Domain: level & scoring -----
     class Difficulty {
         <<enumeration>>
         EASY
@@ -63,13 +69,15 @@ classDiagram
         <<interface>>
         +calculateScore(movements, time) int
     }
-    LevelDefinition ..> IScoreStrategy : Strategy
+    LevelDefinition ..> IScoreStrategy : uses (Strategy)
 
+    %% ----- Domain: user & progress -----
     class User {
         -string passwordHash
         +string id
         +string username
         +verifyPassword(password, hasher) bool
+        +toPersistenceRecord() Record
     }
     class PlayerProgress {
         +string id
@@ -79,7 +87,7 @@ classDiagram
         +int minMoves
         +int minTimeInSeconds
         +bool isCompleted
-        +updateScore(...) PlayerProgress
+        +updateScore(score, moves, time, completed) PlayerProgress
     }
     class LeaderBoardEntry {
         +string username
@@ -89,54 +97,72 @@ classDiagram
     }
     class Direction {
         <<enumeration>>
-        UP DOWN LEFT RIGHT
+        UP
+        DOWN
+        LEFT
+        RIGHT
     }
     class Position {
         +int row
         +int col
     }
 
+    %% ----- Domain: repository ports (DIP) -----
     class ILevelRepository {
         <<interface>>
         +findById(id) LevelDefinition
+        +findByLevelNumber(n) LevelDefinition
         +listAll() LevelDefinition[]
         +save(level) void
         +update(level) void
     }
     class IUserRepository {
         <<interface>>
+        +findById(id) User
         +findByUsername(username) User
         +save(user) void
     }
+    IUserRepository ..> User
     class IProgressRepository {
         <<interface>>
+        +findByUserAndLevel(userId, levelId) PlayerProgress
+        +findAllByUser(userId) PlayerProgress[]
         +save(progress) void
         +getLeaderboardByLevel(levelId, limit) LeaderBoardEntry[]
     }
-    class ICollectibleRepository {
-        <<interface>>
-        +findAllByUser(userId) string[]
-        +mergeForUser(userId, ids) string[]
-    }
+    IProgressRepository ..> LeaderBoardEntry
     class IPasswordHasher {
         <<interface>>
         +hash(password) string
         +compare(password, hash) bool
     }
+    class ITokenService {
+        <<interface>>
+        +sign(payload) string
+        +verify(token) Payload
+    }
+    class ICollectibleRepository {
+        <<interface>>
+        +findAllByUser(userId) string[]
+        +mergeForUser(userId, collectibleIds) string[]
+    }
 
+    %% ----- Domain: factories, builders, rules, services -----
     class CellFactory {
         +register(type, factoryFn) void
         +createCell(type) Cell
     }
-    CellFactory ..> Cell : Factory Method
+    CellFactory ..> Cell : creates (Factory Method)
 
     class LevelBuilder {
         +withId(id) LevelBuilder
         +withDimensions(h, w) LevelBuilder
-        +addArrow(...) LevelBuilder
+        +addCell(row, col, cell) LevelBuilder
+        +addArrow(row, col, dir, id, body) LevelBuilder
+        +withConstraints(maxMoves, maxTime) LevelBuilder
         +build() LevelDefinition
     }
-    LevelBuilder ..> LevelDefinition : Builder
+    LevelBuilder ..> LevelDefinition : builds (Builder)
     LevelBuilder ..> CellFactory
 
     class BaseLevelProcessor {
@@ -146,7 +172,7 @@ classDiagram
         #executeMovement()*
     }
     class FireArrowLevelProcessor
-    BaseLevelProcessor <|-- FireArrowLevelProcessor : Template Method
+    BaseLevelProcessor <|-- FireArrowLevelProcessor
 
     class LevelSolvabilityValidator {
         +isPlayable(dto) bool
@@ -155,23 +181,38 @@ classDiagram
     class LevelActionService {
         +interactWithCell(board, position) void
     }
+    LevelActionService ..> Board
+    FireArrowLevelProcessor ..> LevelActionService : delegates
 
-    %% ----- Application -----
-    class ITokenService {
-        <<interface>>
-        +sign(payload) string
-        +verify(token) Payload
+    %% ----- Application: use cases -----
+    class RegisterUserUseCase {
+        +execute(dto) User
     }
-
-    class RegisterUserUseCase { +execute(dto) User }
-    class LoginUserUseCase { +execute(dto) AuthResult }
-    class SyncProgressUseCase { +execute(dto) ProgressResultDto }
-    class SyncCollectiblesUseCase { +execute(dto) CollectiblesSyncResultDto }
-    class GetPlayerProgressUseCase { +execute(userId) PlayerProgressListDto }
-    class GetLeaderboardUseCase { +execute(query) LeaderBoardEntry[] }
-    class ListLevelsUseCase { +execute() LevelDto[] }
-    class GetLevelUseCase { +execute(id) LevelDto }
-    class UpsertLevelUseCase { +execute(dto) LevelDto }
+    class LoginUserUseCase {
+        +execute(dto) AuthResult
+    }
+    class SyncProgressUseCase {
+        +execute(dto) ProgressResultDto
+    }
+    class GetPlayerProgressUseCase {
+        +execute(userId) PlayerProgressListDto
+    }
+    class GetLeaderboardUseCase {
+        +execute(query) LeaderBoardEntry[]
+    }
+    class ListLevelsUseCase {
+        +execute() LevelDto[]
+    }
+    class GetLevelUseCase {
+        +execute(id) LevelDto
+    }
+    class UpsertLevelUseCase {
+        +execute(dto) LevelDto
+    }
+    class SyncCollectiblesUseCase {
+        +execute(userId, collectibleIds) CollectiblesSyncResultDto
+    }
+    SyncCollectiblesUseCase ..> ICollectibleRepository
 
     RegisterUserUseCase ..> IUserRepository
     RegisterUserUseCase ..> IPasswordHasher
@@ -180,7 +221,7 @@ classDiagram
     LoginUserUseCase ..> ITokenService
     SyncProgressUseCase ..> IProgressRepository
     SyncProgressUseCase ..> ILevelRepository
-    SyncCollectiblesUseCase ..> ICollectibleRepository
+    SyncProgressUseCase ..> PlayerProgress
     GetPlayerProgressUseCase ..> IProgressRepository
     GetLeaderboardUseCase ..> IProgressRepository
     ListLevelsUseCase ..> ILevelRepository
@@ -188,83 +229,54 @@ classDiagram
     UpsertLevelUseCase ..> ILevelRepository
     UpsertLevelUseCase ..> LevelSolvabilityValidator
 
-    %% ----- Interface Adapters -----
-    class LevelJsonMapper {
-        +toLevelDefinition(dto) LevelDefinition
-        +toDto(level) StructuredLevelJsonDto
-    }
-    ListLevelsUseCase ..> LevelJsonMapper
-    UpsertLevelUseCase ..> LevelJsonMapper
-    LevelJsonMapper ..> LevelDefinition : Adapter
-
-    class AppContainer {
-        <<composition root>>
-        +tokenService ITokenService
-        +registerUser RegisterUserUseCase
-        +loginUser LoginUserUseCase
-    }
-    note for AppContainer "Built by async createContainer()"
-
-    class AuthRoutes { +createAuthRouter(container) Router }
-    class LevelsRoutes { +createLevelsRouter(container) Router }
-    class ProgressRoutes { +createProgressRouter(container) Router }
-    class LeaderboardRoutes { +createLeaderboardRouter(container) Router }
-    AuthRoutes ..> AppContainer
-    LevelsRoutes ..> AppContainer
-    ProgressRoutes ..> AppContainer
-    LeaderboardRoutes ..> AppContainer
-
-    %% ----- Infrastructure: persistence adapters -----
+    %% ----- Infrastructure: SQLite adapters -----
     class SqliteUserRepository
     class SqliteLevelRepository
     class SqliteProgressRepository
     class SqliteCollectibleRepository
-    class PostgresUserRepository
-    class PostgresLevelRepository
-    class PostgresProgressRepository
-    class PostgresCollectibleRepository
     class BcryptPasswordHasher
     class JwtTokenService
+    class LevelJsonMapper {
+        +toLevelDefinition(dto) LevelDefinition
+        +toDto(level) StructuredLevelJsonDto
+    }
 
     IUserRepository <|.. SqliteUserRepository
-    IUserRepository <|.. PostgresUserRepository
     ILevelRepository <|.. SqliteLevelRepository
-    ILevelRepository <|.. PostgresLevelRepository
     IProgressRepository <|.. SqliteProgressRepository
-    IProgressRepository <|.. PostgresProgressRepository
     ICollectibleRepository <|.. SqliteCollectibleRepository
-    ICollectibleRepository <|.. PostgresCollectibleRepository
     IPasswordHasher <|.. BcryptPasswordHasher
     ITokenService <|.. JwtTokenService
-    SqliteLevelRepository ..> LevelJsonMapper
-    PostgresLevelRepository ..> LevelJsonMapper
+    SqliteLevelRepository ..> LevelJsonMapper : uses (Adapter)
+    ListLevelsUseCase ..> LevelJsonMapper
+    UpsertLevelUseCase ..> LevelJsonMapper
 
+    %% ----- Infrastructure: composition root -----
+    class AppContainer {
+        <<composition root>>
+        +createContainer(jwtSecret, dbPath) AppContainer
+    }
     AppContainer ..> SqliteUserRepository
-    AppContainer ..> PostgresUserRepository
+    AppContainer ..> SqliteLevelRepository
+    AppContainer ..> SqliteProgressRepository
+    AppContainer ..> SqliteCollectibleRepository
     AppContainer ..> RegisterUserUseCase
     AppContainer ..> LoginUserUseCase
+    AppContainer ..> SyncProgressUseCase
+    AppContainer ..> SyncCollectiblesUseCase
+    AppContainer ..> GetPlayerProgressUseCase
+    AppContainer ..> GetLeaderboardUseCase
+    AppContainer ..> ListLevelsUseCase
+    AppContainer ..> GetLevelUseCase
+    AppContainer ..> UpsertLevelUseCase
 
-    %% ----- Infrastructure: Observer (catalog hot-reload) -----
-    class ILevelCatalogObserver {
-        <<interface>>
-        +onCatalogFileChanged(event) void
-    }
-    class LevelCatalogFileSubject {
-        +attach(observer) void
-        +notifyObservers(event) void
-    }
-    class LevelCatalogUpsertObserver
-    ILevelCatalogObserver <|.. LevelCatalogUpsertObserver
-    LevelCatalogFileSubject o-- "0..*" ILevelCatalogObserver : Observer
-    LevelCatalogUpsertObserver ..> UpsertLevelUseCase
-
-    %% ----- Layer legend -----
+    %% ============================================================
+    %% Layer legend (fill colors)
+    %% ============================================================
     classDef domain fill:#e8f4ea,stroke:#2e7d32,color:#1b3a1e
     classDef application fill:#e8eef8,stroke:#1565c0,color:#0d2a4d
-    classDef adapters fill:#fdf3e2,stroke:#ef6c00,color:#5c3600
     classDef infrastructure fill:#f8e8ee,stroke:#ad1457,color:#4d0d24
 
-    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,ICollectibleRepository,IPasswordHasher,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
-    cssClass "ITokenService,RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,SyncCollectiblesUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
-    cssClass "LevelJsonMapper,AppContainer,AuthRoutes,LevelsRoutes,ProgressRoutes,LeaderboardRoutes" adapters
-    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,SqliteCollectibleRepository,PostgresUserRepository,PostgresLevelRepository,PostgresProgressRepository,PostgresCollectibleRepository,BcryptPasswordHasher,JwtTokenService,ILevelCatalogObserver,LevelCatalogFileSubject,LevelCatalogUpsertObserver" infrastructure
+    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,ICollectibleRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
+    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,SyncCollectiblesUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
+    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,SqliteCollectibleRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure
