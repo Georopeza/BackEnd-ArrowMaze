@@ -1,0 +1,437 @@
+classDiagram
+    direction TB
+
+    %% ============================================================
+    %% Arrow Maze Backend — Class Diagram
+    %% Colors indicate Clean Architecture layer (see legend below).
+    %% Stereotypes indicate DDD role: <<aggregate root>>, <<entity>>,
+    %% <<value object>>, <<enumeration>>, <<interface>>, <<repository>>,
+    %% <<domain service>>, <<use case>>, <<mapper>>, <<factory>>, <<builder>>.
+    %% The Game2D / Cube3D boxes group classes by which board model they
+    %% belong to; shared value objects (Direction) and cross-cutting
+    %% concerns (auth, progress, use cases, infra) sit outside both.
+    %% Patterns shown: Factory Method (CellFactory), Builder
+    %% (LevelBuilder), Template Method (BaseLevelProcessor), Adapter
+    %% (LevelJsonMapper), Repository/DIP (I*Repository ports).
+    %% ============================================================
+
+    namespace Game2D {
+        class Cell {
+            <<abstract, entity>>
+        }
+        class ArrowCell {
+            <<entity>>
+        }
+        class ArrowBodyCell {
+            <<entity>>
+        }
+        class WallCell {
+            <<entity>>
+        }
+        class EmptyCell {
+            <<entity>>
+        }
+        class ExitCell {
+            <<entity>>
+        }
+        class Board {
+            <<aggregate root>>
+            -Cell[][] grid
+            -Arrow[] arrows
+            +addArrow(arrow) void
+            +findArrowAt(position) Arrow
+            +clearPositions(positions) void
+            +removeArrowById(id) void
+            +getCellAt(row, col) Cell
+            +isSolved() bool
+        }
+        class Arrow {
+            <<entity>>
+            +ArrowId id
+            +Position headPosition
+            +Direction direction
+            +Position[] occupiedPositions
+        }
+        class Difficulty {
+            <<enumeration>>
+            EASY
+            MEDIUM
+            HARD
+            EXPERT
+        }
+        class LevelDefinition {
+            <<entity>>
+            +string id
+            +int levelNumber
+            +Difficulty difficulty
+            +Cell[][] board
+            +int maxMoves
+            +int maxTimeInSeconds
+            +calculateScore(strategy, movements, time) int
+        }
+        class IScoreStrategy {
+            <<interface>>
+            +calculateScore(movements, time) int
+        }
+        class CellFactory {
+            <<factory>>
+            +register(type, factoryFn) void
+            +createCell(type) Cell
+        }
+        class LevelBuilder {
+            <<builder>>
+            +withId(id) LevelBuilder
+            +withDimensions(h, w) LevelBuilder
+            +addCell(row, col, cell) LevelBuilder
+            +addArrow(row, col, dir, id, body) LevelBuilder
+            +withConstraints(maxMoves, maxTime) LevelBuilder
+            +build() LevelDefinition
+        }
+        class LevelToBoardMapper {
+            <<mapper>>
+            +toBoard(level) Board
+            +boardFromCells(cells) Board
+        }
+        class BaseLevelProcessor {
+            <<abstract, domain service>>
+            +processAction() void
+            #validateAction()*
+            #executeMovement()*
+        }
+        class FireArrowLevelProcessor {
+            <<domain service>>
+        }
+        class LevelSolvabilityValidator {
+            <<domain service>>
+            +isPlayable(dto) bool
+            +solve(dto) bool
+        }
+        class LevelActionService {
+            <<domain service>>
+            +interactWithCell(board, position) void
+        }
+    }
+
+    Cell <|-- ArrowCell
+    Cell <|-- ArrowBodyCell
+    Cell <|-- WallCell
+    Cell <|-- EmptyCell
+    Cell <|-- ExitCell
+    Board "1" o-- "0..*" Arrow : arrows
+    Board "1" *-- "many" Cell : grid (walls only)
+    Arrow "1" *-- "1..*" Position : headPosition, occupiedPositions
+    Arrow --> Direction
+    LevelDefinition "1" *-- "many" Cell : board
+    LevelDefinition --> Difficulty
+    LevelDefinition ..> IScoreStrategy : uses (Strategy)
+    CellFactory ..> Cell : creates (Factory Method)
+    LevelBuilder ..> LevelDefinition : builds (Builder)
+    LevelBuilder ..> CellFactory
+    LevelToBoardMapper ..> LevelDefinition : reads
+    LevelToBoardMapper ..> Board : builds
+    BaseLevelProcessor <|-- FireArrowLevelProcessor
+    LevelActionService ..> Board
+    FireArrowLevelProcessor ..> LevelActionService : delegates
+
+    namespace Cube3D {
+        class Face {
+            <<enumeration>>
+            TOP
+            BOTTOM
+            FRONT
+            BACK
+            LEFT
+            RIGHT
+        }
+        class CubeLevelDefinition {
+            <<entity>>
+            +Record~Face,Cell[][]~ faces
+            +int maxMoves
+            +int maxTimeInSeconds
+            +faceSize int
+        }
+        class CubeBoard {
+            <<aggregate root>>
+            +getBoard(face) Board
+            +isSolved() bool
+        }
+        class CubeLevelToBoardMapper {
+            <<mapper>>
+            +toCubeBoard(level) CubeBoard
+        }
+        class CubeSurfacePosition {
+            <<value object>>
+            +Face face
+            +int row
+            +int column
+        }
+        class CubeEscapePoint {
+            <<value object>>
+            +CubeSurfacePosition position
+        }
+        class CubePathArrow {
+            <<entity>>
+            +string id
+            +CubeSurfacePosition tip
+            +Direction direction
+            +CubeSurfacePosition[] body
+            +CubeSurfacePosition[] escapeRoute
+            +occupies(position) bool
+            +ensureEndsAt(escape) void
+        }
+        class CubeSurfaceBoard {
+            <<aggregate root>>
+            +int faceSize
+            +CubeEscapePoint escapePoint
+            +isSolved() bool
+            +arrowAt(position) CubePathArrow
+            +withoutArrow(id) CubeSurfaceBoard
+        }
+        class CubeSurfaceLevelDefinition {
+            <<entity>>
+            +int faceSize
+            +CubeEscapePoint escapePoint
+            +toBoard() CubeSurfaceBoard
+        }
+        class CubePathMovementEngine {
+            <<domain service>>
+            +attemptFireAt(board, position) CubeSurfaceFireResult
+            +attemptFire(board, arrowId) CubeSurfaceFireResult
+        }
+    }
+
+    %% NOTA: CubeBoard/CubeLevelDefinition/CubeLevelToBoardMapper no están
+    %% conectados a ningún caso de uso/ruta todavía (dominio puro, sin wiring).
+    %% CubeSurfaceBoard y familia sí son el sistema jugable (Mode3DScreen, cliente).
+    CubeLevelDefinition --> Face : indexado por
+    CubeLevelDefinition "1" *-- "many" Cell : faces (Cell[][] × 6)
+    CubeBoard "1" o-- "6" Board : boardsByFace
+    CubeBoard --> Face : indexado por
+    CubeLevelToBoardMapper ..> LevelToBoardMapper : reusa boardFromCells()
+    CubeLevelToBoardMapper ..> CubeLevelDefinition
+    CubeLevelToBoardMapper ..> CubeBoard : construye
+    CubeSurfacePosition --> Face
+    CubeEscapePoint "1" *-- "1" CubeSurfacePosition
+    CubePathArrow "1" *-- "1" CubeSurfacePosition : tip
+    CubePathArrow "1" *-- "0..*" CubeSurfacePosition : body
+    CubePathArrow "1" *-- "1..*" CubeSurfacePosition : escapeRoute
+    CubePathArrow --> Direction
+    CubeSurfaceBoard "1" *-- "1" CubeEscapePoint
+    CubeSurfaceBoard "1" o-- "0..*" CubePathArrow : arrows
+    CubeSurfaceLevelDefinition "1" *-- "1" CubeEscapePoint
+    CubeSurfaceLevelDefinition "1" o-- "0..*" CubePathArrow : arrows
+    CubeSurfaceLevelDefinition ..> CubeSurfaceBoard : toBoard()
+    CubePathMovementEngine ..> CubeSurfaceBoard
+    CubePathMovementEngine ..> CubePathArrow
+
+    %% ----- Shared value object (usado por Game2D y Cube3D) -----
+    class Direction {
+        <<enumeration>>
+        UP
+        DOWN
+        LEFT
+        RIGHT
+    }
+    class Position {
+        <<value object>>
+        +int row
+        +int col
+    }
+    %% Compartido entre LevelDefinition (2D) y CubeLevelDefinition (3D).
+    class boardCellInvariantsValidator {
+        <<function>>
+        +validateBoardCellInvariants(board) void
+    }
+    LevelDefinition ..> boardCellInvariantsValidator : valida con
+    CubeLevelDefinition ..> boardCellInvariantsValidator : valida cada cara con
+
+    %% ----- Domain: user & progress -----
+    class User {
+        <<entity>>
+        -string passwordHash
+        +string id
+        +string username
+        +verifyPassword(password, hasher) bool
+        +toPersistenceRecord() Record
+    }
+    class PlayerProgress {
+        <<aggregate root>>
+        +string id
+        +string userId
+        +string levelId
+        +int highScore
+        +int minMoves
+        +int minTimeInSeconds
+        +bool isCompleted
+        +updateScore(score, moves, time, completed) PlayerProgress
+    }
+    class LeaderBoardEntry {
+        <<value object>>
+        +string username
+        +int highScore
+        +int minMoves
+        +int minTimeInSeconds
+    }
+
+    %% ----- Domain: repository ports (DIP) -----
+    class ILevelRepository {
+        <<interface, repository>>
+        +findById(id) LevelDefinition
+        +findByLevelNumber(n) LevelDefinition
+        +listAll() LevelDefinition[]
+        +save(level) void
+        +update(level) void
+    }
+    class IUserRepository {
+        <<interface, repository>>
+        +findById(id) User
+        +findByUsername(username) User
+        +save(user) void
+    }
+    IUserRepository ..> User
+    class IProgressRepository {
+        <<interface, repository>>
+        +findByUserAndLevel(userId, levelId) PlayerProgress
+        +findAllByUser(userId) PlayerProgress[]
+        +save(progress) void
+        +getLeaderboardByLevel(levelId, limit) LeaderBoardEntry[]
+    }
+    IProgressRepository ..> LeaderBoardEntry
+    class IPasswordHasher {
+        <<interface, service>>
+        +hash(password) string
+        +compare(password, hash) bool
+    }
+    class ITokenService {
+        <<interface, service>>
+        +sign(payload) string
+        +verify(token) Payload
+    }
+    class ICollectibleRepository {
+        <<interface, repository>>
+        +findAllByUser(userId) string[]
+        +mergeForUser(userId, collectibleIds) string[]
+    }
+
+    %% ----- Application: use cases -----
+    class RegisterUserUseCase {
+        <<use case>>
+        +execute(dto) User
+    }
+    class LoginUserUseCase {
+        <<use case>>
+        +execute(dto) AuthResult
+    }
+    class SyncProgressUseCase {
+        <<use case>>
+        +execute(dto) ProgressResultDto
+    }
+    class GetPlayerProgressUseCase {
+        <<use case>>
+        +execute(userId) PlayerProgressListDto
+    }
+    class GetLeaderboardUseCase {
+        <<use case>>
+        +execute(query) LeaderBoardEntry[]
+    }
+    class ListLevelsUseCase {
+        <<use case>>
+        +execute() LevelDto[]
+    }
+    class GetLevelUseCase {
+        <<use case>>
+        +execute(id) LevelDto
+    }
+    class UpsertLevelUseCase {
+        <<use case>>
+        +execute(dto) LevelDto
+    }
+    class SyncCollectiblesUseCase {
+        <<use case>>
+        +execute(userId, collectibleIds) CollectiblesSyncResultDto
+    }
+    SyncCollectiblesUseCase ..> ICollectibleRepository
+
+    RegisterUserUseCase ..> IUserRepository
+    RegisterUserUseCase ..> IPasswordHasher
+    LoginUserUseCase ..> IUserRepository
+    LoginUserUseCase ..> IPasswordHasher
+    LoginUserUseCase ..> ITokenService
+    SyncProgressUseCase ..> IProgressRepository
+    SyncProgressUseCase ..> ILevelRepository
+    SyncProgressUseCase ..> PlayerProgress
+    GetPlayerProgressUseCase ..> IProgressRepository
+    GetLeaderboardUseCase ..> IProgressRepository
+    ListLevelsUseCase ..> ILevelRepository
+    GetLevelUseCase ..> ILevelRepository
+    UpsertLevelUseCase ..> ILevelRepository
+    UpsertLevelUseCase ..> LevelSolvabilityValidator
+
+    %% ----- Infrastructure: SQLite adapters -----
+    class SqliteUserRepository {
+        <<repository>>
+    }
+    class SqliteLevelRepository {
+        <<repository>>
+    }
+    class SqliteProgressRepository {
+        <<repository>>
+    }
+    class SqliteCollectibleRepository {
+        <<repository>>
+    }
+    class BcryptPasswordHasher {
+        <<service>>
+    }
+    class JwtTokenService {
+        <<service>>
+    }
+    class LevelJsonMapper {
+        <<mapper>>
+        +toLevelDefinition(dto) LevelDefinition
+        +toDto(level) StructuredLevelJsonDto
+    }
+
+    IUserRepository <|.. SqliteUserRepository
+    ILevelRepository <|.. SqliteLevelRepository
+    IProgressRepository <|.. SqliteProgressRepository
+    ICollectibleRepository <|.. SqliteCollectibleRepository
+    IPasswordHasher <|.. BcryptPasswordHasher
+    ITokenService <|.. JwtTokenService
+    SqliteLevelRepository ..> LevelJsonMapper : uses (Adapter)
+    ListLevelsUseCase ..> LevelJsonMapper
+    UpsertLevelUseCase ..> LevelJsonMapper
+
+    %% ----- Infrastructure: composition root -----
+    class AppContainer {
+        <<composition root>>
+        +createContainer(jwtSecret, dbPath) AppContainer
+    }
+    AppContainer ..> SqliteUserRepository
+    AppContainer ..> SqliteLevelRepository
+    AppContainer ..> SqliteProgressRepository
+    AppContainer ..> SqliteCollectibleRepository
+    AppContainer ..> RegisterUserUseCase
+    AppContainer ..> LoginUserUseCase
+    AppContainer ..> SyncProgressUseCase
+    AppContainer ..> SyncCollectiblesUseCase
+    AppContainer ..> GetPlayerProgressUseCase
+    AppContainer ..> GetLeaderboardUseCase
+    AppContainer ..> ListLevelsUseCase
+    AppContainer ..> GetLevelUseCase
+    AppContainer ..> UpsertLevelUseCase
+
+    %% ============================================================
+    %% Layer legend (fill colors)
+    %% ============================================================
+    classDef domain fill:#e8f4ea,stroke:#2e7d32,color:#1b3a1e
+    classDef application fill:#e8eef8,stroke:#1565c0,color:#0d2a4d
+    classDef infrastructure fill:#f8e8ee,stroke:#ad1457,color:#4d0d24
+    classDef domainUnwired fill:#e8f4ea,stroke:#2e7d32,color:#1b3a1e,stroke-dasharray: 4 3
+
+    cssClass "Cell,ArrowCell,ArrowBodyCell,WallCell,EmptyCell,ExitCell,Board,Arrow,Difficulty,LevelDefinition,IScoreStrategy,LevelToBoardMapper,User,PlayerProgress,LeaderBoardEntry,Direction,Position,ILevelRepository,IUserRepository,IProgressRepository,ICollectibleRepository,IPasswordHasher,ITokenService,CellFactory,LevelBuilder,BaseLevelProcessor,FireArrowLevelProcessor,LevelSolvabilityValidator,LevelActionService" domain
+    cssClass "CubeSurfacePosition,CubeEscapePoint,CubePathArrow,CubeSurfaceBoard,CubeSurfaceLevelDefinition,CubePathMovementEngine" domain
+    %% Borde punteado = dominio puro sin caso de uso/ruta que lo invoque todavía (ver nota arriba).
+    cssClass "Face,boardCellInvariantsValidator,CubeLevelDefinition,CubeBoard,CubeLevelToBoardMapper" domainUnwired
+    cssClass "RegisterUserUseCase,LoginUserUseCase,SyncProgressUseCase,SyncCollectiblesUseCase,GetPlayerProgressUseCase,GetLeaderboardUseCase,ListLevelsUseCase,GetLevelUseCase,UpsertLevelUseCase" application
+    cssClass "SqliteUserRepository,SqliteLevelRepository,SqliteProgressRepository,SqliteCollectibleRepository,BcryptPasswordHasher,JwtTokenService,LevelJsonMapper,AppContainer" infrastructure
