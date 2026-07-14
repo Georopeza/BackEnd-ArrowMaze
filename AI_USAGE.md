@@ -1414,6 +1414,55 @@ Arquitectura de **persistencia dual** en la capa de infraestructura (patrón Rep
 
 ---
 
+## Consulta #32 — Dominio de superficie de cubo para Mode 3D
+
+**Problema abordado.**
+
+Incorporar en el backend un **modelo de dominio paralelo** para Mode 3D (superficie exterior del cubo), alineado conceptualmente con el cliente Flutter, **sin modificar** el dominio/API 2D de niveles, auth, progreso ni leaderboard. El objetivo de esta entrega es foundation de dominio + tests unitarios (HTTP Mode 3D queda fuera de alcance).
+
+**Herramienta de IA utilizada.**
+
+- Cursor Agent (Composer / Auto), en la misma iniciativa Mode 3D del frontend, con ejecución de tests del paquete de dominio.
+
+**Prompt o instrucción proporcionada.**
+
+> **Brief — Mode 3D Cube Surface Domain, backend TypeScript**
+>
+> Añade un bounded context de superficie de cubo **en paralelo** al dominio 2D existente.
+>
+> **No modificar** contratos 2D (`Board`, niveles JSON, auth, progress, leaderboard). tests unitarios que cubran solapes, ocupación multi-cara, extracción con ruta libre y bloqueo con ruta ocupada.
+>
+> **Criterios de aceptación:** suites 2D intactas; tests cube-surface en verde; invariantes de dominio enforced; proponer Conventional Commit (`feat(cube-surface): …`) y entrada en `AI_USAGE.md`.
+>
+> **Fuera de alcance:** endpoints REST Mode 3D, generador aleatorio en servidor, persistencia de progreso 3D, preocupaciones de render three_js.
+
+**Resultado obtenido.**
+
+| Componente | Ubicación | Responsabilidad |
+|------------|-----------|-----------------|
+| `CubeSurfacePosition` | `src/domain/value-objects/CubeSurfacePosition.ts` | Value object de celda (face, row, column); igualdad estructural y validación de límites para tip, body y rutas. |
+| `CubeEscapePoint` | `src/domain/value-objects/CubeEscapePoint.ts` | Encapsula la celda de escape del nivel 3D y el ancla semántica del final de toda ruta de extracción. |
+| `CubePathArrow` | `src/domain/entities/CubePathArrow.ts` | Entidad multi-cara con tip, dirección, body y `escapeRoute`; concentra ocupación y validación de cierre en el escape. |
+| `CubeSurfaceLevelDefinition` | `src/domain/entities/CubeSurfaceLevelDefinition.ts` | Definición inmutable de nivel de superficie, preparada para futuro catálogo/seed sin acoplarse a `LevelDefinition` 2D. |
+| `CubeSurfaceBoard` | `src/domain/aggregates/CubeSurfaceBoard.ts` | Aggregate root del puzzle 3D: mantiene flechas y escape, impide solapes, resuelve ocupación por celda y produce estado tras extracción. |
+| `CubePathMovementEngine` | `src/domain/services/CubePathMovementEngine.ts` | Servicio de dominio extract/block según ocupación de la ruta; espejo de las reglas del motor Flutter. |
+| Tests del agregado | `src/domain/aggregates/CubeSurfaceBoard.test.ts` | Cobertura de construcción válida/inválida, ocupación multi-cara, extracción libre y bloqueos por ruta ocupada. |
+
+**Commit asociado (Conventional Commits):**
+
+`feat(cube-surface): add domain model for multi-face cube path arrows`
+
+**Modificaciones realizadas por el equipo al resultado de la IA.**
+
+- Aún no existen endpoints HTTP dedicados de Mode 3D; el cliente genera niveles en local.
+
+**Lecciones aprendidas o limitaciones identificadas.**
+
+- Un bounded context paralelo (`cube-surface`) evita contaminar `Board` 2D y permite evolucionar Mode 3D sin romper contratos existentes.
+- Tener dominio backend listo antes de la API reduce divergencia cliente/servidor cuando se añada seed o validación remota.
+
+---
+
 ## Evaluación crítica
 
 **Porcentaje aproximado del código que contó con asistencia de IA.**
